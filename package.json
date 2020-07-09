@@ -1,0 +1,25 @@
+{
+  "name": "terminal",
+  "version": "1.0.0",
+  "description": "Terminal for eduk8s.",
+  "main": "built/backend/server.js",
+  "scripts": {
+    "compile": "rm -rf built && tsc",
+    "start": "node built/backend/server.js",
+    "install": "npm run compile"
+  },
+  "author": "Graham Dumpleton",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "express": "^4.17.1",
+    "path": "^0.12.7",
+    "pug": "^3.0.0",
+    "typescript": "^3.9.6",
+    "ws": "^7.3.1",
+    "xterm": "^4.7.0",
+    "xterm-addon-fit": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.20"
+  }
+}
