@@ -1,5 +1,5 @@
 import * as express from "express";
-import * as path from 'path';
+import * as path from "path";
 import * as WebSocket from "ws";
 
 const BASEDIR = path.dirname(path.dirname(__dirname));
@@ -17,13 +17,22 @@ const server = app.listen(PORT, () => {
 app.set("views", path.join(BASEDIR, "src/backend/views"));
 app.set("view engine", "pug");
 
-app.use('/static/styles/terminal.css', express.static(path.join(BASEDIR, "src/frontend/styles/terminal.css")));
-app.use('/static/scripts/terminal.js', express.static(path.join(BASEDIR, "built/frontend/scripts/terminal.js")));
+app.use("/static/styles", express.static(path.join(BASEDIR, "src/frontend/styles")));
+app.use("/static/scripts", express.static(path.join(BASEDIR, "built/frontend/scripts")));
 
-app.use('/static/styles/xterm.css', express.static(path.join(BASEDIR, 'node_modules/xterm/css/xterm.css')));
-app.use('/static/scripts/xterm.js', express.static(path.join(BASEDIR, 'node_modules/xterm/lib/xterm.js')));
-app.use('/static/scripts/xterm-addon-fit.js', express.static(path.join(BASEDIR, 'node_modules/xterm-addon-fit/lib/xterm-addon-fit.js')));
+app.use("/static/scripts/require.js", express.static(path.join(BASEDIR, "node_modules/requirejs/require.js")));
+
+app.use("/static/scripts", express.static(path.join(BASEDIR, "node_modules/split-grid/dist")));
+
+app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/xterm/css")));
+app.use("/static/scripts", express.static(path.join(BASEDIR, "node_modules/xterm/lib")));
+
+app.use("/static/scripts", express.static(path.join(BASEDIR, "node_modules/xterm-addon-fit/lib")));
 
 app.get("/", (req, res) => {
+    res.render("terminals-2");
+});
+
+app.get("/terminal/session/:id", (req, res) => {
     res.render("terminal")
 });
