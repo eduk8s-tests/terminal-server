@@ -1,17 +1,9 @@
 html
     head
-        script(src="/static/scripts/xterm.js")
-        script(src="/static/scripts/xterm-addon-fit.js")
-
         link(rel="stylesheet", href="/static/styles/xterm.css")
         link(rel="stylesheet", href="/static/styles/eduk8s.css")
 
     body
-        #terminal
+        div.terminal(data-session=`${session}`)
 
-        script.
-            var terminal = new Terminal();
-            var fitAddon = new FitAddon.FitAddon();
-            terminal.open(document.getElementById("terminal"));
-            terminal.loadAddon(fitAddon);
-            terminal.write("Hello from \\x1B[1;3;31mxterm.js\x1B[0m $ ");
+        script(src="/static/scripts/eduk8s-bundle.js")

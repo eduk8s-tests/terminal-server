@@ -30,9 +30,11 @@ app.use("/static/scripts", express.static(path.join(BASEDIR, "node_modules/xterm
 app.use("/static/scripts", express.static(path.join(BASEDIR, "node_modules/xterm-addon-fit/lib")));
 
 app.get("/", (req, res) => {
-    res.render("terminals-2");
+    res.render("terminals-iframe");
 });
 
 app.get("/terminal/session/:id", (req, res) => {
-    res.render("terminal")
+    let session = req.params.id;
+
+    res.render("terminal", {"session": session})
 });
