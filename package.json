@@ -4,7 +4,7 @@
   "description": "Terminal for eduk8s.",
   "main": "built/backend/server.js",
   "scripts": {
-    "compile": "rm -rf built && tsc",
+    "compile": "rm -rf built && tsc && browserify built/frontend/scripts/eduk8s.js --standalone eduk8s -o built/frontend/scripts/eduk8s-bundle.js && cat built/frontend/scripts/eduk8s-bundle.js | uglifyjs > built/frontend/scripts/eduk8s-bundle.min.js",
     "start": "node built/backend/server.js",
     "install": "npm run compile"
   },
@@ -12,16 +12,20 @@
   "license": "Apache-2.0",
   "dependencies": {
     "express": "^4.17.1",
+    "jquery": "^3.5.1",
     "path": "^0.12.7",
     "pug": "^3.0.0",
     "requirejs": "^2.3.6",
     "split-grid": "^1.0.9",
-    "typescript": "^3.9.6",
     "ws": "^7.3.1",
     "xterm": "^4.7.0",
     "xterm-addon-fit": "^0.4.0"
   },
   "devDependencies": {
-    "@types/node": "^14.0.20"
+    "@types/jquery": "^3.5.0",
+    "@types/node": "^14.0.20",
+    "browserify": "^16.5.1",
+    "typescript": "^3.9.6",
+    "uglify-js": "^3.10.0"
   }
 }

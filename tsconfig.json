@@ -1,5 +1,11 @@
 {
+    "parserOptions": {
+        "sourceType": "module"
+    },
     "compilerOptions": {
+        "module": "commonjs",
+        "moduleResolution": "node",
+	    "sourceMap": true,
         "outDir": "./built",
         "allowJs": true,
         "target": "es5"

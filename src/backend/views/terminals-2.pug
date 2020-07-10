@@ -1,55 +1,8 @@
 html
     head
-        script(src="/static/scripts/require.js")
-
-        script.
-            require.config({
-                paths: {
-                    "split-grid": "/static/scripts/split-grid"
-                }
-            });
+        link(rel="stylesheet", href="/static/styles/eduk8s.css")
 
     body
-        style.
-            html, body, .grid {
-                height: 100%;
-                padding: 0;
-            }
+        div#terminals(data-layout="split/2")
 
-            .grid {
-                display: grid;
-                grid-template-rows: 2fr 10px 1fr 10px 1fr;
-            }
-
-            .horizontal-gutter-1 {
-                border: solid 1px red;
-                background-color: red;
-            }
-            .horizontal-gutter-2 {
-                border: solid 1px green;
-                background-color: green;
-            }
-                
-        div.grid
-            div
-                iframe(src="/terminal/session/1")
-            div.horizontal-gutter-1
-            div
-                iframe(src="/terminal/session/2")
-            div.horizontal-gutter-2
-            div
-                iframe(src="/terminal/session/3")
-
-        script.
-            require(["split-grid"], function (Split) {
-                Split({
-                    rowGutters: [{
-                        track: 1,
-                        element: document.querySelector('.horizontal-gutter-1'),
-                    },
-                    {
-                        track: 3,
-                        element: document.querySelector('.horizontal-gutter-2'),
-                    }]
-                });
-            });
+    script(src="/static/scripts/eduk8s-bundle.js")

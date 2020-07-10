@@ -1,0 +1,28 @@
+html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+}
+
+#terminal {
+    height: 100%;
+    width: 100%;
+}
+
+.terminals-grid {
+    display: grid;
+    grid-template-rows: 2fr 8px 1fr 8px 1fr;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.terminals-horizontal-gutter-1 {
+    border: solid 1px lightgray;
+    background-color: lightgray;
+}
+.terminals-horizontal-gutter-2 {
+    border: solid 1px lightgray;
+    background-color: lightgray;
+}
