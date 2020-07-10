@@ -3,10 +3,49 @@ import * as $ from "jquery"
 import { Terminal } from "xterm"
 import { FitAddon } from "xterm-addon-fit"
 
+import { ResizeSensor } from "css-element-queries"
+
+let _ = require("lodash")
+
 let Split = require("split-grid")
+
+class TerminalSession {
+    name: string
+    element: HTMLElement
+    terminal: Terminal
+    fitter: FitAddon
+    sensor: ResizeSensor
+
+    constructor(name: string, element: HTMLElement) {
+        this.name = name
+        this.element = element
+
+        this.terminal = new Terminal()
+        this.fitter = new FitAddon()
+
+        this.terminal.open(this.element)
+        this.terminal.loadAddon(this.fitter)
+
+        let self = this;
+
+        this.sensor = new ResizeSensor(element, _.throttle(function() {
+            self.resize_terminal()
+        }, 500));
+    }
+
+    resize_terminal() {
+        this.fitter.fit()
+    }
+
+    write_message(data: string) {
+        this.terminal.write(data)
+    }
+}
 
 class Dashboard {
     terminals: JQuery = $("#terminals")
+
+    sessions: { [id: string] : TerminalSession } = {}
 
     constructor() {
         this.setup_terminals()
@@ -31,12 +70,11 @@ class Dashboard {
                 let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
                 let gutter2: JQuery = $("<div>", { class: "terminals-horizontal-gutter-2" })
 
-                // grid.append($("<div>").append($("<iframe>", { src: "/terminal/session/1" })))
                 grid.append($("<div>", {class: "terminal", "data-session": "1"}))
                 grid.append(gutter1)
-                grid.append($("<div>").append($("<iframe>", { src: "/terminal/session/2" })))
+                grid.append($("<div>", {class: "terminal", "data-session": "2"}))
                 grid.append(gutter2)
-                grid.append($("<div>").append($("<iframe>", { src: "/terminal/session/3" })))
+                grid.append($("<div>", {class: "terminal", "data-session": "3"}))
 
                 Split({
                     rowGutters: [
@@ -57,9 +95,9 @@ class Dashboard {
 
                 let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
 
-                grid.append($("<div>").append($("<iframe>", { src: "/terminal/session/1" })))
+                grid.append($("<div>", {class: "terminal", "data-session": "1"}))
                 grid.append(gutter1)
-                grid.append($("<div>").append($("<iframe>", { src: "/terminal/session/2" })))
+                grid.append($("<div>", {class: "terminal", "data-session": "2"}))
 
                 Split({
                     rowGutters: [
@@ -73,7 +111,7 @@ class Dashboard {
                 })
             }
             else {
-                $(this.terminals).append($("<iframe>", { src: "/terminal/session/1" }))
+                this.terminals.append($("<div>", {class: "terminal", "data-session": "1"}))
             }
         }
 
@@ -83,15 +121,14 @@ class Dashboard {
         // of the terminal session being connected to is taken from the
         // "session" data attribute.
 
-        $(".terminal").each(function (index: number, element: HTMLElement) {
-            let session: string = $(element).data("session")
-            console.log(session)
+        let self = this;
 
-            var terminal = new Terminal();
-            var fitAddon = new FitAddon();
-            terminal.open(element);
-            terminal.loadAddon(fitAddon);
-            terminal.write("Hello from \\x1B[1;3;31mxterm.js\x1B[0m $ ");
+        $(".terminal").each(function (index: number, element: HTMLElement) {
+            let name: string = $(element).data("session")
+
+            self.sessions[name] = new TerminalSession(name, element);
+
+            self.sessions[name].write_message("Hello from \\x1B[1;3;31mxterm.js\x1B[0m $ ");
         })
     }
 }
