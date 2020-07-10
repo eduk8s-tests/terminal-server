@@ -26,11 +26,11 @@ class TerminalSession {
         this.terminal.open(this.element)
         this.terminal.loadAddon(this.fitter)
 
-        let self = this;
+        let self = this
 
-        this.sensor = new ResizeSensor(element, _.throttle(function() {
+        this.sensor = new ResizeSensor(element, _.throttle(function () {
             self.resize_terminal()
-        }, 500));
+        }, 500))
     }
 
     resize_terminal() {
@@ -45,7 +45,7 @@ class TerminalSession {
 class Dashboard {
     terminals: JQuery = $("#terminals")
 
-    sessions: { [id: string] : TerminalSession } = {}
+    sessions: { [id: string]: TerminalSession } = {}
 
     constructor() {
         this.setup_terminals()
@@ -70,11 +70,11 @@ class Dashboard {
                 let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
                 let gutter2: JQuery = $("<div>", { class: "terminals-horizontal-gutter-2" })
 
-                grid.append($("<div>", {class: "terminal", "data-session": "1"}))
+                grid.append($("<div>", { class: "terminal", "data-session": "1" }))
                 grid.append(gutter1)
-                grid.append($("<div>", {class: "terminal", "data-session": "2"}))
+                grid.append($("<div>", { class: "terminal", "data-session": "2" }))
                 grid.append(gutter2)
-                grid.append($("<div>", {class: "terminal", "data-session": "3"}))
+                grid.append($("<div>", { class: "terminal", "data-session": "3" }))
 
                 Split({
                     rowGutters: [
@@ -84,9 +84,9 @@ class Dashboard {
                     minSize: 150,
                     snapOffset: 0,
                     onDrag: function () {
-                        console.log($('.terminals-grid').css('grid-template-rows'));
+                        console.log($('.terminals-grid').css('grid-template-rows'))
                     }
-                });
+                })
             }
             else if (layout == "split") {
                 let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 8px 1fr")
@@ -95,9 +95,9 @@ class Dashboard {
 
                 let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
 
-                grid.append($("<div>", {class: "terminal", "data-session": "1"}))
+                grid.append($("<div>", { class: "terminal", "data-session": "1" }))
                 grid.append(gutter1)
-                grid.append($("<div>", {class: "terminal", "data-session": "2"}))
+                grid.append($("<div>", { class: "terminal", "data-session": "2" }))
 
                 Split({
                     rowGutters: [
@@ -111,7 +111,7 @@ class Dashboard {
                 })
             }
             else {
-                this.terminals.append($("<div>", {class: "terminal", "data-session": "1"}))
+                this.terminals.append($("<div>", { class: "terminal", "data-session": "1" }))
             }
         }
 
@@ -121,14 +121,14 @@ class Dashboard {
         // of the terminal session being connected to is taken from the
         // "session" data attribute.
 
-        let self = this;
+        let self = this
 
         $(".terminal").each(function (index: number, element: HTMLElement) {
             let name: string = $(element).data("session")
 
-            self.sessions[name] = new TerminalSession(name, element);
+            self.sessions[name] = new TerminalSession(name, element)
 
-            self.sessions[name].write_message("Hello from \\x1B[1;3;31mxterm.js\x1B[0m $ ");
+            self.sessions[name].write_message("Hello from \\x1B[1;3;31mxterm.js\x1B[0m $ ")
         })
     }
 }
