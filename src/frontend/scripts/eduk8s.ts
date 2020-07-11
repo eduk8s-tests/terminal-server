@@ -34,9 +34,22 @@ class TerminalSession {
         })
 
         this.fitter = new FitAddon()
-
-        this.terminal.open(this.element)
         this.terminal.loadAddon(this.fitter)
+
+        let self = this
+
+        function wait_until_visible() {
+            if (!self.element.offsetParent)
+                setTimeout(wait_until_visible, 300)
+            else
+                self.configure_session()
+          }
+    
+        wait_until_visible()
+    }
+
+    private configure_session() {
+        this.terminal.open(this.element)
 
         let url = window.location.origin
 
@@ -47,24 +60,6 @@ class TerminalSession {
 
         this.configure_handlers()
         this.configure_sensors()
-    }
-
-    private send_message(type: PacketType, data?: any) : boolean {
-        if (this.socket.readyState === WebSocket.OPEN) {
-            let packet = {
-                type: type,
-                session: this.name
-            }
-
-            if (data !== undefined)
-                packet["data"] = data
-
-            this.socket.send(JSON.stringify(packet))
-
-            return true
-        }
-
-        return false
     }
 
     private configure_handlers() {
@@ -114,6 +109,27 @@ class TerminalSession {
             let data = { cols: this.terminal.cols, rows: this.terminal.rows}
             this.send_message(PacketType.RESIZE, data)
         }
+    }
+
+    private send_message(type: PacketType, data?: any) : boolean {
+        if (!this.socket)
+            return false
+
+        if (this.socket.readyState === WebSocket.OPEN) {
+            let packet = {
+                type: type,
+                session: this.name
+            }
+
+            if (data !== undefined)
+                packet["data"] = data
+
+            this.socket.send(JSON.stringify(packet))
+
+            return true
+        }
+
+        return false
     }
 
     write_text(data: string) {
