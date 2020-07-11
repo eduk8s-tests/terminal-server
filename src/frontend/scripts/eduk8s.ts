@@ -18,12 +18,12 @@ interface Packet {
 }
 
 class TerminalSession {
-    name: string
-    element: HTMLElement
-    terminal: Terminal
-    fitter: FitAddon
-    sensor: ResizeSensor
-    socket: WebSocket
+    private name: string
+    private element: HTMLElement
+    private terminal: Terminal
+    private fitter: FitAddon
+    private sensor: ResizeSensor
+    private socket: WebSocket
 
     constructor(name: string, element: HTMLElement) {
         this.name = name
