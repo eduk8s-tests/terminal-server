@@ -72,18 +72,22 @@ class TerminalSession {
         }
 
         this.socket.onmessage = function (evt) {
-            let packet: Packet = JSON.parse(evt.data);
+            let packet: Packet = JSON.parse(evt.data)
             if (packet.session == self.name) {
                 if (packet.type == PacketType.DATA)
-                    self.terminal.write(packet.data);
+                    self.terminal.write(packet.data)
             } else {
-                console.warn("Client session " + self.name + " received message for session " + packet.session);
+                console.warn("Client session " + self.name + " received message for session " + packet.session)
             }
-          };
+        }
 
         this.socket.onclose = function(_evt: any) {
-            self.terminal.write("\r\nClosed\r\n");
+            self.terminal.write("\r\nClosed\r\n")
         }
+
+        this.terminal.onData(function(data) {
+            self.send_message(PacketType.DATA, data)
+        })
     }
 
     private configure_sensors() {
