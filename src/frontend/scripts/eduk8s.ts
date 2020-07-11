@@ -9,35 +9,114 @@ let _ = require("lodash")
 
 let Split = require("split-grid")
 
+enum PacketType { HELLO, PING, DATA, RESIZE }
+
+interface Packet {
+    type: PacketType
+    session: string
+    data?: any
+}
+
 class TerminalSession {
     name: string
     element: HTMLElement
     terminal: Terminal
     fitter: FitAddon
     sensor: ResizeSensor
+    socket: WebSocket
 
     constructor(name: string, element: HTMLElement) {
         this.name = name
         this.element = element
 
-        this.terminal = new Terminal()
+        this.terminal = new Terminal({
+            cursorBlink: true
+        })
+
         this.fitter = new FitAddon()
 
         this.terminal.open(this.element)
         this.terminal.loadAddon(this.fitter)
 
+        let url = window.location.origin
+
+        url = url.replace("https://", "wss://")
+        url = url.replace("http://", "ws://")
+        
+        this.socket = new WebSocket(url)
+
+        this.configure_handlers()
+        this.configure_sensors()
+    }
+
+    private send_message(type: PacketType, data?: any) : boolean {
+        if (this.socket.readyState === WebSocket.OPEN) {
+            let packet = {
+                type: type,
+                session: this.name
+            }
+
+            if (data !== undefined)
+                packet["data"] = data
+
+            this.socket.send(JSON.stringify(packet))
+
+            return true
+        }
+
+        return false
+    }
+
+    private configure_handlers() {
         let self = this
 
-        this.sensor = new ResizeSensor(element, _.throttle(function () {
+        this.socket.onopen = function() {
+            self.send_message(PacketType.HELLO)
+            self.resize_terminal()
+            self.initiate_pings(self)
+        }
+
+        this.socket.onmessage = function (evt) {
+            let packet: Packet = JSON.parse(evt.data);
+            if (packet.session == self.name) {
+                if (packet.type == PacketType.DATA)
+                    self.terminal.write(packet.data);
+            } else {
+                console.warn("Client session " + self.name + " received message for session " + packet.session);
+            }
+          };
+
+        this.socket.onclose = function(_evt: any) {
+            self.terminal.write("\r\nClosed\r\n");
+        }
+    }
+
+    private configure_sensors() {
+        let self = this
+        this.sensor = new ResizeSensor(this.element, _.throttle(function () {
             self.resize_terminal()
         }, 500))
     }
 
-    resize_terminal() {
-        this.fitter.fit()
+    private initiate_pings(self: TerminalSession) {
+        function ping() {
+            self.send_message(PacketType.PING)
+            setTimeout(ping, 15000)
+        }
+        
+        setTimeout(ping, 15000)
     }
 
-    write_message(data: string) {
+    private resize_terminal() {
+        if (this.element.clientWidth > 0 && this.element.clientHeight > 0) {
+            this.fitter.fit()
+
+            let data = { cols: this.terminal.cols, rows: this.terminal.rows}
+            this.send_message(PacketType.RESIZE, data)
+        }
+    }
+
+    write_text(data: string) {
         this.terminal.write(data)
     }
 }
@@ -82,10 +161,7 @@ class Dashboard {
                         { track: 3, element: gutter2.get(0) }
                     ],
                     minSize: 150,
-                    snapOffset: 0,
-                    onDrag: function () {
-                        console.log($('.terminals-grid').css('grid-template-rows'))
-                    }
+                    snapOffset: 0
                 })
             }
             else if (layout == "split") {
@@ -104,10 +180,7 @@ class Dashboard {
                         { track: 1, element: gutter1.get(0) }
                     ],
                     minSize: 150,
-                    snapOffset: 0,
-                    onDrag: function () {
-                        console.log($('.terminals-grid').css('grid-template-rows'))
-                    }
+                    snapOffset: 0
                 })
             }
             else {
@@ -127,10 +200,12 @@ class Dashboard {
             let name: string = $(element).data("session")
 
             self.sessions[name] = new TerminalSession(name, element)
-
-            self.sessions[name].write_message("Hello from \\x1B[1;3;31mxterm.js\x1B[0m $ ")
         })
     }
 }
 
-exports.dashboard = new Dashboard()
+function initialize_dashboard() {
+    exports.dashboard = new Dashboard()
+}
+
+$(document).ready(initialize_dashboard)
