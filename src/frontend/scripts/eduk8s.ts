@@ -162,7 +162,7 @@ class Dashboard {
             let layout: string = this.terminals.data("layout")
 
             if (layout == "split/2") {
-                let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 8px 1fr 8px 1fr")
+                let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 4px 1fr 4px 1fr")
 
                 $(this.terminals).append(grid)
 
@@ -185,7 +185,7 @@ class Dashboard {
                 })
             }
             else if (layout == "split") {
-                let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 8px 1fr")
+                let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 4px 1fr")
 
                 $(this.terminals).append(grid)
 
