@@ -31,7 +31,7 @@ app.get("/", function (req, res) {
 })
 
 app.get("/terminal/session/:id", function (req, res) {
-    let session = req.params.id
-
+    let id = req.params.id || "1"
+    let session = terminals.retrieve_session(id)
     res.render("terminal", {"session": session})
 })

@@ -13,20 +13,20 @@ enum PacketType { HELLO, PING, DATA, RESIZE }
 
 interface Packet {
     type: PacketType
-    session: string
+    id: string
     data?: any
 }
 
 class TerminalSession {
-    private name: string
+    private id: string
     private element: HTMLElement
     private terminal: Terminal
     private fitter: FitAddon
     private sensor: ResizeSensor
     private socket: WebSocket
 
-    constructor(name: string, element: HTMLElement) {
-        this.name = name
+    constructor(id: string, element: HTMLElement) {
+        this.id = id
         this.element = element
 
         this.terminal = new Terminal({
@@ -73,11 +73,11 @@ class TerminalSession {
 
         this.socket.onmessage = function (evt) {
             let packet: Packet = JSON.parse(evt.data)
-            if (packet.session == self.name) {
+            if (packet.id == self.id) {
                 if (packet.type == PacketType.DATA)
                     self.terminal.write(packet.data)
             } else {
-                console.warn("Client session " + self.name + " received message for session " + packet.session)
+                console.warn("Client session " + self.id + " received message for session " + packet.id)
             }
         }
 
@@ -122,7 +122,7 @@ class TerminalSession {
         if (this.socket.readyState === WebSocket.OPEN) {
             let packet = {
                 type: type,
-                session: this.name
+                id: this.id
             }
 
             if (data !== undefined)
@@ -156,10 +156,10 @@ class Dashboard {
         // Can only be one such container since the ID must be unique.
 
         if (this.terminals != null) {
-            // The number of terminals is dictated by the "layout" data
-            // attribute present on the container.
+            // The number of terminals is dictated by the "terminal-layout"
+            // data attribute present on the container.
 
-            let layout: string = this.terminals.data("layout")
+            let layout: string = this.terminals.data("terminal-layout")
 
             if (layout == "split/2") {
                 let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 4px 1fr 4px 1fr")
@@ -169,11 +169,11 @@ class Dashboard {
                 let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
                 let gutter2: JQuery = $("<div>", { class: "terminals-horizontal-gutter-2" })
 
-                grid.append($("<div>", { class: "terminal", "data-session": "1" }))
+                grid.append($("<div>", { class: "terminal", "data-session-id": "1" }))
                 grid.append(gutter1)
-                grid.append($("<div>", { class: "terminal", "data-session": "2" }))
+                grid.append($("<div>", { class: "terminal", "data-session-id": "2" }))
                 grid.append(gutter2)
-                grid.append($("<div>", { class: "terminal", "data-session": "3" }))
+                grid.append($("<div>", { class: "terminal", "data-session-id": "3" }))
 
                 Split({
                     rowGutters: [
@@ -191,9 +191,9 @@ class Dashboard {
 
                 let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
 
-                grid.append($("<div>", { class: "terminal", "data-session": "1" }))
+                grid.append($("<div>", { class: "terminal", "data-session-id": "1" }))
                 grid.append(gutter1)
-                grid.append($("<div>", { class: "terminal", "data-session": "2" }))
+                grid.append($("<div>", { class: "terminal", "data-session-id": "2" }))
 
                 Split({
                     rowGutters: [
@@ -204,22 +204,22 @@ class Dashboard {
                 })
             }
             else {
-                this.terminals.append($("<div>", { class: "terminal", "data-session": "1" }))
+                this.terminals.append($("<div>", { class: "terminal", "data-session-id": "1" }))
             }
         }
 
         // Now look for ".terminal". In this case we insert the actual
         // terminal directly into the page connected using a web socket.
-        // Since using a class, there can be multiple instances. The name
+        // Since using a class, there can be multiple instances. The id
         // of the terminal session being connected to is taken from the
-        // "session" data attribute.
+        // "session-id" data attribute.
 
         let self = this
 
         $(".terminal").each(function (index: number, element: HTMLElement) {
-            let name: string = $(element).data("session")
+            let id: string = $(element).data("session-id")
 
-            self.sessions[name] = new TerminalSession(name, element)
+            self.sessions[id] = new TerminalSession(id, element)
         })
     }
 }
