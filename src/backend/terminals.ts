@@ -1,5 +1,7 @@
-import * as express from 'express';
 import * as WebSocket from "ws"
+
+import * as pty from 'node-pty';
+import {IPty} from "node-pty";
 
 import { Server } from 'http';
 
@@ -14,39 +16,61 @@ interface Packet {
 class TerminalSession {
     private sockets: WebSocket[] = []
 
+    private subprocess: IPty
+
     constructor(public readonly id: string) {
         console.log('{CREATE}', id)
+
+        this.subprocess = pty.spawn('/bin/bash', [], {
+            name: 'xterm-color',
+            cols: 80,
+            rows: 25,
+            cwd: process.cwd(),
+            env: <any> process.env
+        })
+
+        this.configure_handlers()
     }
 
-    handle_message(ws: WebSocket, packet: Packet) {
-        console.log("{PACKET}", packet.type, packet.id, packet.data)
+    private configure_handlers() {
+        let self = this
 
-        if (packet.type == PacketType.HELLO) {
-            if (this.sockets.indexOf(ws) == -1)
-                this.sockets.push(ws)
-
-            let reply = {
+        this.subprocess.onData(function (data) {
+            let packet = {
                 type: PacketType.DATA,
-                id: packet.id,
-                data: "Hello there!\r\n"
+                id: self.id,
+                data: data
             }
 
-            this.send_message(reply)
-        }
-        else if (packet.type == PacketType.RESIZE) {
-            let reply = {
-                type: PacketType.DATA,
-                id: packet.id,
-                data: `Resized to ${JSON.stringify(packet.data)}\r\n`
-            }
+            self.send_message(packet)
+        })
 
-            this.send_message(reply)
-        }
+        this.subprocess.onExit(function () {
+            console.log("{EXIT}", self.id)
+        })
     }
 
     private send_message(packet: Packet) {
         let message = JSON.stringify(packet)
         this.sockets.forEach(function (ws) { ws.send(message) })
+    }
+
+    handle_message(ws: WebSocket, packet: Packet) {
+        switch (packet.type) {
+            case PacketType.HELLO: {
+                if (this.sockets.indexOf(ws) == -1)
+                    this.sockets.push(ws)
+                break
+            }
+            case PacketType.DATA: {
+                this.subprocess.write(packet.data)
+                break
+            }
+            case PacketType.RESIZE: {
+                this.subprocess.resize(packet.data.cols, packet.data.rows)
+                break
+            }
+        }
     }
 }
 
