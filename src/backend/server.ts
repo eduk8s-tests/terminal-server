@@ -16,7 +16,7 @@ const server = app.listen(PORT, function () {
     console.log(`Server running on http://localhost:${PORT}.`)
 })
 
-let terminals = new TerminalServer(server);
+let terminals = new TerminalServer(server)
 
 app.set("views", path.join(BASEDIR, "src/backend/views"))
 app.set("view engine", "pug")
