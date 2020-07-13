@@ -5,6 +5,8 @@ import { FitAddon } from "xterm-addon-fit"
 
 import { ResizeSensor } from "css-element-queries"
 
+let FontFaceObserver = require('fontfaceobserver')
+
 let _ = require("lodash")
 
 let Split = require("split-grid")
@@ -32,7 +34,8 @@ class TerminalSession {
         this.endpoint = endpoint
 
         this.terminal = new Terminal({
-            cursorBlink: true
+            cursorBlink: true,
+            fontFamily: "SourceCodePro"
         })
 
         this.fitter = new FitAddon()
@@ -241,4 +244,8 @@ function initialize_dashboard() {
     exports.dashboard = new Dashboard()
 }
 
-$(document).ready(initialize_dashboard)
+$(document).ready(function () {
+    var font = new FontFaceObserver("SourceCodePro", {weight: 400});
+       
+    font.load().then(initialize_dashboard, initialize_dashboard)
+})

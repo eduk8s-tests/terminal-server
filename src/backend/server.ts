@@ -26,6 +26,8 @@ app.use("/static/scripts", express.static(path.join(BASEDIR, "built/frontend/scr
 
 app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/xterm/css")))
 
+app.use("/static/fonts", express.static(path.join(BASEDIR, "fonts/SourceCodePro"), { maxAge: 3600000 }))
+
 app.get("/", function (req, res) {
     res.render("terminals", {endpoint_id: TerminalServer.id})
 })
