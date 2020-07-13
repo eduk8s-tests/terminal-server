@@ -1,11 +1,14 @@
 import * as WebSocket from "ws"
 
-import * as pty from 'node-pty';
+import { v4 as uuidv4 } from 'uuid'
+
+import * as pty from "node-pty";
 import {IPty} from "node-pty";
 
-import { Server } from 'http';
+import { Server } from "http";
+import { Terminal } from "xterm";
 
-enum PacketType { HELLO, PING, DATA, RESIZE }
+enum PacketType { HELLO, PING, DATA, RESIZE, ERROR }
 
 interface Packet {
     type: PacketType
@@ -19,55 +22,93 @@ class TerminalSession {
     private subprocess: IPty
 
     constructor(public readonly id: string) {
-        console.log('{CREATE}', id)
+        console.log("{CREATE}", id)
+    }
 
-        this.subprocess = pty.spawn('/bin/bash', [], {
-            name: 'xterm-color',
+    private create_subprocess() {
+        let self = this
+
+        console.log("{SUBPROCESS}")
+
+        this.subprocess = pty.spawn("/bin/bash", ["-il"], {
+            name: "xterm-color",
             cols: 80,
             rows: 25,
             cwd: process.cwd(),
             env: <any> process.env
         })
 
-        this.configure_handlers()
-    }
-
-    private configure_handlers() {
-        let self = this
-
         this.subprocess.onData(function (data) {
-            let packet = {
-                type: PacketType.DATA,
-                id: self.id,
-                data: data
-            }
-
-            self.send_message(packet)
+            self.broadcast_message(PacketType.DATA, data)
         })
 
         this.subprocess.onExit(function () {
             console.log("{EXIT}", self.id)
+            self.subprocess = null
+            self.close_connections()
         })
     }
 
-    private send_message(packet: Packet) {
+    private send_message(ws: WebSocket, type: PacketType, data?: any) {
+        if (ws.readyState !== WebSocket.OPEN)
+            return
+
+        let packet = {
+            type: type,
+            id: this.id
+        }
+
+        if (data !== undefined)
+            packet["data"] = data
+
         let message = JSON.stringify(packet)
-        this.sockets.forEach(function (ws) { ws.send(message) })
+
+        ws.send(message)
+    }
+
+    private broadcast_message(type: PacketType, data?: any) {
+        let packet = {
+            type: type,
+            id: this.id
+        }
+
+        if (data !== undefined)
+            packet["data"] = data
+
+        let message = JSON.stringify(packet)
+
+        this.sockets.forEach(function (ws) {
+            if (ws.readyState === WebSocket.OPEN)
+                ws.send(message)
+        })
+    }
+
+    private close_connections() {
+        this.sockets.forEach(function (ws) { ws.close() })
     }
 
     handle_message(ws: WebSocket, packet: Packet) {
         switch (packet.type) {
             case PacketType.HELLO: {
-                if (this.sockets.indexOf(ws) == -1)
-                    this.sockets.push(ws)
+                if (packet.data.token == TerminalServer.id) {
+                    if (!this.subprocess)
+                        this.create_subprocess()
+                    if (this.sockets.indexOf(ws) == -1)
+                        this.sockets.push(ws)
+                }
+                else {
+                    this.send_message(ws, PacketType.ERROR, {reason: "Unauthorized"})
+                }
                 break
             }
             case PacketType.DATA: {
-                this.subprocess.write(packet.data)
+                if (this.subprocess)
+                    this.subprocess.write(packet.data)
                 break
             }
             case PacketType.RESIZE: {
-                this.subprocess.resize(packet.data.cols, packet.data.rows)
+                if (this.subprocess)
+                    this.subprocess.resize(packet.data.cols, packet.data.rows)
                 break
             }
         }
@@ -75,6 +116,8 @@ class TerminalSession {
 }
 
 export class TerminalServer {
+    static id: string = uuidv4()
+
     private socket_server: WebSocket.Server
 
     private sessions = new Map<String, TerminalSession>()

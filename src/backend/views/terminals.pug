@@ -4,6 +4,6 @@ html
         link(rel="stylesheet", href="/static/styles/eduk8s.css")
 
     body
-        div#terminals(data-terminal-layout="split/2")
+        div#terminals(data-endpoint-id=`${endpoint_id}` data-terminal-layout="split/2")
 
     script(src="/static/scripts/eduk8s-bundle.js")

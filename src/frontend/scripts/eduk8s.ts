@@ -9,7 +9,7 @@ let _ = require("lodash")
 
 let Split = require("split-grid")
 
-enum PacketType { HELLO, PING, DATA, RESIZE }
+enum PacketType { HELLO, PING, DATA, RESIZE, ERROR }
 
 interface Packet {
     type: PacketType
@@ -20,14 +20,16 @@ interface Packet {
 class TerminalSession {
     private id: string
     private element: HTMLElement
+    private endpoint: string
     private terminal: Terminal
     private fitter: FitAddon
     private sensor: ResizeSensor
     private socket: WebSocket
 
-    constructor(id: string, element: HTMLElement) {
+    constructor(id: string, element: HTMLElement, endpoint: string) {
         this.id = id
         this.element = element
+        this.endpoint = endpoint
 
         this.terminal = new Terminal({
             cursorBlink: true
@@ -66,7 +68,8 @@ class TerminalSession {
         let self = this
 
         this.socket.onopen = function() {
-            self.send_message(PacketType.HELLO)
+            let data = {token: self.endpoint}
+            self.send_message(PacketType.HELLO, data)
             self.resize_terminal()
             self.initiate_pings(self)
         }
@@ -74,8 +77,16 @@ class TerminalSession {
         this.socket.onmessage = function (evt) {
             let packet: Packet = JSON.parse(evt.data)
             if (packet.id == self.id) {
-                if (packet.type == PacketType.DATA)
-                    self.terminal.write(packet.data)
+                switch (packet.type) {
+                    case (PacketType.DATA): {
+                        self.terminal.write(packet.data)
+                        break
+                    }
+                    case (PacketType.ERROR): {
+                        self.terminal.write(`\r\n${packet.data.reason}\r\n`)
+                        break
+                    }
+                }
             } else {
                 console.warn("Client session " + self.id + " received message for session " + packet.id)
             }
@@ -110,7 +121,7 @@ class TerminalSession {
         if (this.element.clientWidth > 0 && this.element.clientHeight > 0) {
             this.fitter.fit()
 
-            let data = { cols: this.terminal.cols, rows: this.terminal.rows}
+            let data = {cols: this.terminal.cols, rows: this.terminal.rows}
             this.send_message(PacketType.RESIZE, data)
         }
     }
@@ -160,6 +171,7 @@ class Dashboard {
             // data attribute present on the container.
 
             let layout: string = this.terminals.data("terminal-layout")
+            let token: string = this.terminals.data("endpoint-id")
 
             if (layout == "split/2") {
                 let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 4px 1fr 4px 1fr")
@@ -169,11 +181,11 @@ class Dashboard {
                 let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
                 let gutter2: JQuery = $("<div>", { class: "terminals-horizontal-gutter-2" })
 
-                grid.append($("<div>", { class: "terminal", "data-session-id": "1" }))
+                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
                 grid.append(gutter1)
-                grid.append($("<div>", { class: "terminal", "data-session-id": "2" }))
+                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "2" }))
                 grid.append(gutter2)
-                grid.append($("<div>", { class: "terminal", "data-session-id": "3" }))
+                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "3" }))
 
                 Split({
                     rowGutters: [
@@ -191,9 +203,9 @@ class Dashboard {
 
                 let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
 
-                grid.append($("<div>", { class: "terminal", "data-session-id": "1" }))
+                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
                 grid.append(gutter1)
-                grid.append($("<div>", { class: "terminal", "data-session-id": "2" }))
+                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "2" }))
 
                 Split({
                     rowGutters: [
@@ -204,7 +216,7 @@ class Dashboard {
                 })
             }
             else {
-                this.terminals.append($("<div>", { class: "terminal", "data-session-id": "1" }))
+                this.terminals.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
             }
         }
 
@@ -218,8 +230,9 @@ class Dashboard {
 
         $(".terminal").each(function (index: number, element: HTMLElement) {
             let id: string = $(element).data("session-id")
+            let endpoint: string = $(element).data("endpoint-id")
 
-            self.sessions[id] = new TerminalSession(id, element)
+            self.sessions[id] = new TerminalSession(id, element, endpoint)
         })
     }
 }

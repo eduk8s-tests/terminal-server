@@ -27,11 +27,15 @@ app.use("/static/scripts", express.static(path.join(BASEDIR, "built/frontend/scr
 app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/xterm/css")))
 
 app.get("/", function (req, res) {
-    res.render("terminals")
+    res.render("terminals", {endpoint_id: TerminalServer.id})
 })
 
-app.get("/terminal/session/:id", function (req, res) {
-    let id = req.params.id || "1"
-    let session = terminals.retrieve_session(id)
-    res.render("terminal", {"session": session})
+app.get("/terminal/session/:session_id", function (req, res) {
+    let session_id = req.params.session_id || "1"
+
+    // We don't activate a server side terminal session at this point, that
+    // will be done when the initial websocket message is sent. The access
+    // token will be used to validate access.
+
+    res.render("terminal", {endpoint_id: TerminalServer.id, session_id: session_id})
 })
