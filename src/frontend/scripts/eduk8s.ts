@@ -102,6 +102,7 @@ class TerminalSession {
 
         this.socket.onclose = function(_evt: any) {
             self.write_output("\r\nClosed\r\n")
+            $(self.element).addClass("dead")
         }
 
         this.terminal.onData(function(data) {
