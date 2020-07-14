@@ -120,6 +120,11 @@ class TerminalSession {
                     if (!this.terminal)
                         this.create_subprocess()
 
+                    // Send notification to any existing sessions that this
+                    // session is being hijacked by new client connection.
+                    
+                    this.broadcast_message(PacketType.ERROR, {reason: "Hijacked"})
+
                     if (this.sockets.indexOf(ws) == -1)
                         this.sockets.push(ws)
 
@@ -134,7 +139,7 @@ class TerminalSession {
                     this.send_message(ws, PacketType.DATA, this.buffer.join(''))
                 }
                 else {
-                    this.send_message(ws, PacketType.ERROR, {reason: "Unauthorized"})
+                    this.send_message(ws, PacketType.ERROR, {reason: "Forbidden"})
                 }
                 break
             }

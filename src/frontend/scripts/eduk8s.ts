@@ -70,6 +70,9 @@ class TerminalSession {
 
         this.configure_handlers()
         this.configure_sensors()
+
+        if (this.id == "1")
+            this.focus()
     }
 
     private configure_handlers() {
@@ -91,7 +94,7 @@ class TerminalSession {
                         break
                     }
                     case (PacketType.ERROR): {
-                        self.terminal.write(`\r\n${packet.data.reason}\r\n`)
+                        $(self.element).addClass(`notify-${packet.data.reason.toLowerCase()}`)
                         break
                     }
                 }
@@ -101,8 +104,8 @@ class TerminalSession {
         }
 
         this.socket.onclose = function(_evt: any) {
+            $(self.element).addClass("notify-closed")
             self.write_output("\r\nClosed\r\n")
-            $(self.element).addClass("dead")
         }
 
         this.terminal.onData(function(data) {
@@ -183,10 +186,13 @@ class Dashboard {
     sessions: { [id: string]: TerminalSession } = {}
 
     constructor() {
-        this.setup_dashboard()
         this.setup_terminals()
-        this.setup_execute()
-        this.setup_interrupt()
+
+        if (this.dashboard.length) {
+            this.setup_dashboard()
+            this.setup_execute()
+            this.setup_interrupt()
+        }
     }
 
     private setup_dashboard() {
