@@ -9,7 +9,7 @@ let FontFaceObserver = require('fontfaceobserver')
 
 let _ = require("lodash")
 
-let Split = require("split-grid")
+var Split = require('split.js')
 
 enum PacketType { HELLO, PING, DATA, RESIZE, ERROR }
 
@@ -44,6 +44,7 @@ class TerminalSession {
         let self = this
 
         function wait_until_visible() {
+            console.log("Checking if visible", self.id)
             if (!self.element.offsetParent)
                 setTimeout(wait_until_visible, 300)
             else
@@ -54,6 +55,7 @@ class TerminalSession {
     }
 
     private configure_session() {
+        console.log("Configure terminal session", this.id)
         this.terminal.open(this.element)
 
         let url = window.location.origin
@@ -105,6 +107,8 @@ class TerminalSession {
     }
 
     private configure_sensors() {
+        console.log("Configure sensor", this.id)
+
         let self = this
         this.sensor = new ResizeSensor(this.element, _.throttle(function () {
             self.resize_terminal()
@@ -121,6 +125,7 @@ class TerminalSession {
     }
 
     private resize_terminal() {
+        console.log("Resize terminal", this.id)
         if (this.element.clientWidth > 0 && this.element.clientHeight > 0) {
             this.fitter.fit()
 
@@ -169,6 +174,8 @@ class Dashboard {
         // container for hosting one or more terminals using iframes for each.
         // Can only be one such container since the ID must be unique.
 
+        console.log("Setting up terminals")
+
         if (this.terminals != null) {
             // The number of terminals is dictated by the "terminal-layout"
             // data attribute present on the container.
@@ -177,45 +184,32 @@ class Dashboard {
             let token: string = this.terminals.data("endpoint-id")
 
             if (layout == "split/2") {
-                let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 4px 1fr 4px 1fr")
+                let grid: JQuery = $("<div>")
 
                 $(this.terminals).append(grid)
 
-                let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
-                let gutter2: JQuery = $("<div>", { class: "terminals-horizontal-gutter-2" })
+                grid.append($("<div>", { id: "terminal-1", class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
+                grid.append($("<div>", { id: "terminal-2", class: "terminal", "data-endpoint-id": token, "data-session-id": "2" }))
+                grid.append($("<div>", { id: "terminal-3", class: "terminal", "data-endpoint-id": token, "data-session-id": "3" }))
 
-                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
-                grid.append(gutter1)
-                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "2" }))
-                grid.append(gutter2)
-                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "3" }))
-
-                Split({
-                    rowGutters: [
-                        { track: 1, element: gutter1.get(0) },
-                        { track: 3, element: gutter2.get(0) }
-                    ],
-                    minSize: 150,
-                    snapOffset: 0
+                Split(['#terminal-1', '#terminal-2', '#terminal-3'], {
+                    gutterSize: 8,
+                    sizes: [50, 25, 25],
+                    direction: 'vertical'
                 })
             }
             else if (layout == "split") {
-                let grid: JQuery = $("<div>", { class: "terminals-grid" }).css("grid-template-rows", "2fr 4px 1fr")
+                let grid: JQuery = $("<div>")
 
                 $(this.terminals).append(grid)
 
-                let gutter1: JQuery = $("<div>", { class: "terminals-horizontal-gutter-1" })
+                grid.append($("<div>", { id: "terminal-1", class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
+                grid.append($("<div>", { id: "terminal-2", class: "terminal", "data-endpoint-id": token, "data-session-id": "2" }))
 
-                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
-                grid.append(gutter1)
-                grid.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "2" }))
-
-                Split({
-                    rowGutters: [
-                        { track: 1, element: gutter1.get(0) }
-                    ],
-                    minSize: 150,
-                    snapOffset: 0
+                Split(['#terminal-1', '#terminal-2'], {
+                    gutterSize: 8,
+                    sizes: [60, 40],
+                    direction: 'vertical'
                 })
             }
             else {
@@ -241,11 +235,18 @@ class Dashboard {
 }
 
 function initialize_dashboard() {
+    console.log("Initalizing dashboard")
     exports.dashboard = new Dashboard()
 }
 
 $(document).ready(function () {
     var font = new FontFaceObserver("SourceCodePro", {weight: 400});
        
-    font.load().then(initialize_dashboard, initialize_dashboard)
+    font.load().then(function () {
+        console.log("Loaded fonts okay")
+        initialize_dashboard()
+    }), function () {
+        console.log("Failed to load fonts")
+        initialize_dashboard()
+    }
 })

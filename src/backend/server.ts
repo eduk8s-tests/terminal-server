@@ -21,6 +21,7 @@ let terminals = new TerminalServer(server)
 app.set("views", path.join(BASEDIR, "src/backend/views"))
 app.set("view engine", "pug")
 
+app.use("/static/images", express.static(path.join(BASEDIR, "src/frontend/images")))
 app.use("/static/styles", express.static(path.join(BASEDIR, "src/frontend/styles")))
 app.use("/static/scripts", express.static(path.join(BASEDIR, "built/frontend/scripts")))
 
