@@ -31,7 +31,7 @@ app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/bootst
 app.use("/static/fonts", express.static(path.join(BASEDIR, "fonts/SourceCodePro"), { maxAge: 3600000 }))
 
 app.get("/", function (req, res) {
-    res.render("terminals", {endpoint_id: TerminalServer.id})
+    res.render("testing", {endpoint_id: TerminalServer.id})
 })
 
 app.get("/terminal/session/:session_id", function (req, res) {
