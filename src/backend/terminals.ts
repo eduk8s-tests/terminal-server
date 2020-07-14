@@ -1,6 +1,6 @@
 import * as WebSocket from "ws"
 
-import { v4 as uuidv4 } from 'uuid'
+import { v4 as uuidv4 } from "uuid"
 
 import * as pty from "node-pty"
 import {IPty} from "node-pty"
@@ -16,12 +16,20 @@ interface Packet {
     args?: any
 }
 
+interface Bucket {
+    seq: number
+    data: string
+}
+
 class TerminalSession {
     private sockets: WebSocket[] = []
 
     private terminal: IPty
-    private buffer: string[]
+    private buffer: Bucket[]
+    private buffer_size: number
     private buffer_limit: number = 50000
+
+    private sequence: number
 
     constructor(public readonly id: string) {
         console.log("{CREATE}", id)
@@ -41,6 +49,8 @@ class TerminalSession {
         })
 
         this.buffer = []
+        this.buffer_size = 0
+        this.sequence = 0
 
         this.terminal.onData(function (data) {
             let args = {data: data}
@@ -55,14 +65,17 @@ class TerminalSession {
             // Thus buffer in blocks, and discard whole blocks until we
             // are under allowed maximum, or if only one block left.
 
-            self.buffer.push(data)
+            let bucket = {
+                seq: ++self.sequence,
+                data: data
+            }
 
-            let sizes = self.buffer.map((s) => s.length)
-            let total = sizes.reduce((s, c) => s + c, 0)
+            self.buffer.push(bucket)
+            self.buffer_size += data.length
 
-            while (self.buffer.length > 1 && total > self.buffer_limit) {
+            while (self.buffer.length > 1 && self.buffer_size > self.buffer_limit) {
                 let item = self.buffer.shift()
-                total -= item.length
+                self.buffer_size -= item.data.length
             }
         })
 
@@ -70,6 +83,8 @@ class TerminalSession {
             console.log("{EXIT}", self.id)
             self.terminal = null
             self.buffer = []
+            self.buffer_size = 0
+            self.sequence = 0
             self.close_connections()
         })
     }
@@ -119,6 +134,7 @@ class TerminalSession {
             case PacketType.DATA: {
                 if (this.terminal)
                     this.terminal.write(packet.args.data)
+
                 break
             }
             case PacketType.HELLO: {
@@ -140,11 +156,17 @@ class TerminalSession {
                     // is displayed. A subsequent resize event should with
                     // luck fix that up, although, if there are two active
                     // clients with different screen sizes then the resize
-                    // event will break the existing one.
+                    // event will break the existing one. We also only send
+                    // any buffered data from after the sequence number which
+                    // was supplied with the hello message.
 
-                    let data: string = this.buffer.join('')
+                    let data = this.buffer.filter(function (bucket) {
+                        return bucket.seq > packet.args.seq
+                    }).map(function (bucket) {return bucket.data}).join("")
 
-                    let args = {data: data}
+                    let seq = this.buffer.length ? this.buffer[this.buffer.length-1].seq : packet.args.seq
+
+                    let args = {data: data, seq: seq}
 
                     this.send_message(ws, PacketType.DATA, args)
                 }
