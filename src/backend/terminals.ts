@@ -13,7 +13,7 @@ enum PacketType { HELLO, PING, DATA, RESIZE, ERROR }
 interface Packet {
     type: PacketType
     id: string
-    data?: any
+    args?: any
 }
 
 class TerminalSession {
@@ -21,7 +21,7 @@ class TerminalSession {
 
     private terminal: IPty
     private buffer: string[]
-    private max_buffered_screens: number = 3
+    private buffer_limit: number = 50000
 
     constructor(public readonly id: string) {
         console.log("{CREATE}", id)
@@ -43,7 +43,9 @@ class TerminalSession {
         this.buffer = []
 
         this.terminal.onData(function (data) {
-            self.broadcast_message(PacketType.DATA, data)
+            let args = {data: data}
+
+            self.broadcast_message(PacketType.DATA, args)
 
             // We need to add the data onto the sub process data buffer
             // used to send data to new client connections. We don't want
@@ -58,10 +60,7 @@ class TerminalSession {
             let sizes = self.buffer.map((s) => s.length)
             let total = sizes.reduce((s, c) => s + c, 0)
 
-            let screen_size = self.terminal.cols * self.terminal.rows
-            let max_buffer_size = screen_size * self.max_buffered_screens
-
-            while (self.buffer.length > 1 && total > max_buffer_size) {
+            while (self.buffer.length > 1 && total > self.buffer_limit) {
                 let item = self.buffer.shift()
                 total -= item.length
             }
@@ -75,7 +74,7 @@ class TerminalSession {
         })
     }
 
-    private send_message(ws: WebSocket, type: PacketType, data?: any) {
+    private send_message(ws: WebSocket, type: PacketType, args?: any) {
         if (ws.readyState !== WebSocket.OPEN)
             return
 
@@ -84,22 +83,22 @@ class TerminalSession {
             id: this.id
         }
 
-        if (data !== undefined)
-            packet["data"] = data
+        if (args !== undefined)
+            packet["args"] = args
 
         let message = JSON.stringify(packet)
 
         ws.send(message)
     }
 
-    private broadcast_message(type: PacketType, data?: any) {
+    private broadcast_message(type: PacketType, args?: any) {
         let packet = {
             type: type,
             id: this.id
         }
 
-        if (data !== undefined)
-            packet["data"] = data
+        if (args !== undefined)
+            packet["args"] = args
 
         let message = JSON.stringify(packet)
 
@@ -114,15 +113,22 @@ class TerminalSession {
     }
 
     handle_message(ws: WebSocket, packet: Packet) {
+        let self = this
+
         switch (packet.type) {
+            case PacketType.DATA: {
+                if (this.terminal)
+                    this.terminal.write(packet.args.data)
+                break
+            }
             case PacketType.HELLO: {
-                if (packet.data.token == TerminalServer.id) {
+                if (packet.args.token == TerminalServer.id) {
                     if (!this.terminal)
                         this.create_subprocess()
 
                     // Send notification to any existing sessions that this
                     // session is being hijacked by new client connection.
-                    
+
                     this.broadcast_message(PacketType.ERROR, {reason: "Hijacked"})
 
                     if (this.sockets.indexOf(ws) == -1)
@@ -136,21 +142,45 @@ class TerminalSession {
                     // clients with different screen sizes then the resize
                     // event will break the existing one.
 
-                    this.send_message(ws, PacketType.DATA, this.buffer.join(''))
+                    let data: string = this.buffer.join('')
+
+                    let args = {data: data}
+
+                    this.send_message(ws, PacketType.DATA, args)
                 }
                 else {
                     this.send_message(ws, PacketType.ERROR, {reason: "Forbidden"})
+                    break
                 }
-                break
-            }
-            case PacketType.DATA: {
-                if (this.terminal)
-                    this.terminal.write(packet.data)
-                break
+
+                // This is intended to fall through in order to also trigger
+                // an initial resize when connect based on size in hello
+                // message.
             }
             case PacketType.RESIZE: {
-                if (this.terminal)
-                    this.terminal.resize(packet.data.cols, packet.data.rows)
+                if (this.terminal) {
+                    if (this.terminal.cols == packet.args.cols && this.terminal.rows == packet.args.rows) {
+                        // The current and new size are the same, so we change
+                        // size to be one row larger and then set back to the
+                        // original size. This will trigger application to
+                        // refresh screen at current size.
+
+                        this.terminal.resize(packet.args.cols, packet.args.rows+1)
+
+                        // Devices will ignore resize request which is followed
+                        // immediately by another, so need to wait a short
+                        // period of time before sending resize with correct
+                        // size again.
+
+                        setTimeout(function() {
+                            if (self.terminal)
+                                self.terminal.resize(packet.args.cols, packet.args.rows)
+                        }, 30); 
+                    }
+                    else {
+                        this.terminal.resize(packet.args.cols, packet.args.rows)
+                    }
+                }
                 break
             }
         }

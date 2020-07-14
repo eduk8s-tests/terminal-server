@@ -17,7 +17,7 @@ enum PacketType { HELLO, PING, DATA, RESIZE, ERROR }
 interface Packet {
     type: PacketType
     id: string
-    data?: any
+    args?: any
 }
 
 class TerminalSession {
@@ -28,11 +28,13 @@ class TerminalSession {
     private fitter: FitAddon
     private sensor: ResizeSensor
     private socket: WebSocket
+    private sequence: number
 
     constructor(id: string, element: HTMLElement, endpoint: string) {
         this.id = id
         this.element = element
         this.endpoint = endpoint
+        this.sequence = 0
 
         this.terminal = new Terminal({
             cursorBlink: true,
@@ -59,7 +61,13 @@ class TerminalSession {
 
     private configure_session() {
         console.log("Configure terminal session", this.id)
+
         this.terminal.open(this.element)
+
+        // We fit the window now. The size details will be sent with the
+        // initial hello message sent to the terminal server.
+
+        this.fitter.fit()
 
         let url = window.location.origin
 
@@ -79,9 +87,18 @@ class TerminalSession {
         let self = this
 
         this.socket.onopen = function() {
-            let data = {token: self.endpoint}
-            self.send_message(PacketType.HELLO, data)
-            self.resize_terminal()
+            // We set the data chunk sequence number to 0, to indicate
+            // we want all available buffered data.
+
+            let args = {
+                token: self.endpoint,
+                cols: self.terminal.cols,
+                rows: self.terminal.rows,
+                seq: 0
+            }
+
+            self.send_message(PacketType.HELLO, args)
+
             self.initiate_pings(self)
         }
 
@@ -90,11 +107,11 @@ class TerminalSession {
             if (packet.id == self.id) {
                 switch (packet.type) {
                     case (PacketType.DATA): {
-                        self.terminal.write(packet.data)
+                        self.terminal.write(packet.args.data)
                         break
                     }
                     case (PacketType.ERROR): {
-                        $(self.element).addClass(`notify-${packet.data.reason.toLowerCase()}`)
+                        $(self.element).addClass(`notify-${packet.args.reason.toLowerCase()}`)
                         break
                     }
                 }
@@ -105,11 +122,12 @@ class TerminalSession {
 
         this.socket.onclose = function(_evt: any) {
             $(self.element).addClass("notify-closed")
-            self.write_output("\r\nClosed\r\n")
+            self.write("\r\nClosed\r\n")
         }
 
         this.terminal.onData(function(data) {
-            self.send_message(PacketType.DATA, data)
+            let args = {data: data}
+            self.send_message(PacketType.DATA, args)
         })
     }
 
@@ -136,12 +154,12 @@ class TerminalSession {
         if (this.element.clientWidth > 0 && this.element.clientHeight > 0) {
             this.fitter.fit()
 
-            let data = {cols: this.terminal.cols, rows: this.terminal.rows}
-            this.send_message(PacketType.RESIZE, data)
+            let args = {cols: this.terminal.cols, rows: this.terminal.rows}
+            this.send_message(PacketType.RESIZE, args)
         }
     }
 
-    private send_message(type: PacketType, data?: any) : boolean {
+    private send_message(type: PacketType, args?: any) : boolean {
         if (!this.socket)
             return false
 
@@ -151,8 +169,8 @@ class TerminalSession {
                 id: this.id
             }
 
-            if (data !== undefined)
-                packet["data"] = data
+            if (args !== undefined)
+                packet["args"] = args
 
             this.socket.send(JSON.stringify(packet))
 
@@ -162,12 +180,8 @@ class TerminalSession {
         return false
     }
 
-    write_output(data: string) {
-        this.terminal.write(data)
-    }
-
-    write_input(data: string) {
-        this.send_message(PacketType.DATA, data)
+    write(text: string) {
+        this.terminal.write(text)
     }
 
     focus() {
@@ -176,6 +190,14 @@ class TerminalSession {
 
     scrollToBottom() {
         this.terminal.scrollToBottom()
+    }
+
+    paste(text: string) {
+        this.terminal.paste(text)
+    }
+
+    close() {
+        this.socket.close()
     }
 }
 
@@ -192,6 +214,7 @@ class Dashboard {
             this.setup_dashboard()
             this.setup_execute()
             this.setup_interrupt()
+            this.setup_shutdown()
         }
     }
 
@@ -285,7 +308,7 @@ class Dashboard {
 
             terminal.focus()
             terminal.scrollToBottom()
-            terminal.write_input(input+"\n")
+            terminal.paste(input+"\n")
         })
     }
 
@@ -300,7 +323,20 @@ class Dashboard {
 
             terminal.focus()
             terminal.scrollToBottom()
-            terminal.write_input(String.fromCharCode(0x03))
+            terminal.paste(String.fromCharCode(0x03))
+        })
+    }
+
+    private setup_shutdown() {
+        let self = this
+
+        $(".shutdown").click(function (event) {
+            let element = event.target
+            let session_id = $(element).data("session-id")
+
+            let terminal = self.sessions[session_id]
+
+            terminal.close()
         })
     }
 }
