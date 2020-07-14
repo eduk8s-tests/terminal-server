@@ -11,6 +11,7 @@
   "author": "Graham Dumpleton",
   "license": "Apache-2.0",
   "dependencies": {
+    "bootstrap": "^4.5.0",
     "css-element-queries": "^1.2.3",
     "express": "^4.17.1",
     "fontfaceobserver": "^2.1.0",

@@ -1,9 +1,19 @@
 html
     head
         link(rel="stylesheet", href="/static/styles/xterm.css")
+        link(rel="stylesheet", href="/static/styles/bootstrap.css")
         link(rel="stylesheet", href="/static/styles/eduk8s.css")
 
     body
-        div.terminal(data-endpoint-id=`${endpoint_id}` data-session-id=`${session_id}`)
+        div#dashboard
+            div.split.split-horizontal#controls-pane
+                div.jumbotron
+                    p
+                        button.execute(type="button" class="btn btn-primary" data-session-id="1" data-input="ls -las") Execute #1
+                    p
+                        button.interrupt(type="button" class="btn btn-primary" data-session-id="1") Interrupt #1
+
+            div.split.split-horizontal#terminals-pane
+                div.terminal(data-endpoint-id=`${endpoint_id}` data-session-id=`${session_id}`)
 
         script(src="/static/scripts/eduk8s-bundle.js")

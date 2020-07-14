@@ -53,11 +53,21 @@ body {
 	background-repeat: no-repeat;
 	background-position: 50%;
 }
-.gutter.gutter-horizontal {
-	cursor: col-resize;
-	background-image: url('/static/images/vertical.png');
-}
 .gutter.gutter-vertical {
-	cursor: row-resize;
-	background-image: url('/static/images/horizontal.png');
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAFAQMAAABo7865AAAABlBMVEVHcEzMzMzyAv2sAAAAAXRSTlMAQObYZgAAABBJREFUeF5jOAMEEAIEEFwAn3kMwcB6I2AAAAAASUVORK5CYII=');
+}
+.gutter.gutter-horizontal {
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAeCAYAAADkftS9AAAAIklEQVQoU2M4c+bMfxAGAgYYmwGrIIiDjrELjpo5aiZeMwF+yNnOs5KSvgAAAABJRU5ErkJggg==');
+}
+.split {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+	box-sizing: border-box;
+	overflow-y: auto;
+	overflow-x: hidden;
+}
+.split.split-horizontal,
+.gutter.gutter-horizontal {
+	height: 100%;
+	float: left;
 }

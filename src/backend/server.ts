@@ -26,6 +26,7 @@ app.use("/static/styles", express.static(path.join(BASEDIR, "src/frontend/styles
 app.use("/static/scripts", express.static(path.join(BASEDIR, "built/frontend/scripts")))
 
 app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/xterm/css")))
+app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/bootstrap/dist/css")))
 
 app.use("/static/fonts", express.static(path.join(BASEDIR, "fonts/SourceCodePro"), { maxAge: 3600000 }))
 

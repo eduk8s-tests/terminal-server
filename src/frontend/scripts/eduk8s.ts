@@ -98,7 +98,7 @@ class TerminalSession {
         }
 
         this.socket.onclose = function(_evt: any) {
-            self.terminal.write("\r\nClosed\r\n")
+            self.write_output("\r\nClosed\r\n")
         }
 
         this.terminal.onData(function(data) {
@@ -155,21 +155,51 @@ class TerminalSession {
         return false
     }
 
-    write_text(data: string) {
+    write_output(data: string) {
         this.terminal.write(data)
+    }
+
+    write_input(data: string) {
+        this.send_message(PacketType.DATA, data)
+    }
+
+    focus() {
+        this.terminal.focus()
+    }
+
+    scrollToBottom() {
+        this.terminal.scrollToBottom()
     }
 }
 
 class Dashboard {
     terminals: JQuery = $("#terminals")
+    dashboard: JQuery = $("#dashboard")
 
     sessions: { [id: string]: TerminalSession } = {}
 
     constructor() {
+        this.setup_dashboard()
         this.setup_terminals()
+        this.setup_execute()
+        this.setup_interrupt()
     }
 
-    setup_terminals() {
+    private setup_dashboard() {
+        console.log("Setting up dashboard")
+
+        if (this.dashboard) {
+            Split(['#controls-pane', '#terminals-pane'], {
+                gutterSize: 8,
+                sizes: [20, 80],
+                cursor: 'row-resize',
+                snapOffset: 120,
+                minSize: 0,
+            })
+        }
+    }
+
+    private setup_terminals() {
         // Check for "#terminals" first. If this occurs then we use it as a
         // container for hosting one or more terminals using iframes for each.
         // Can only be one such container since the ID must be unique.
@@ -230,6 +260,37 @@ class Dashboard {
             let endpoint: string = $(element).data("endpoint-id")
 
             self.sessions[id] = new TerminalSession(id, element, endpoint)
+        })
+    }
+
+    private setup_execute() {
+        let self = this
+
+        $(".execute").click(function (event) {
+            let element = event.target
+            let session_id = $(element).data("session-id")
+            let input = $(element).data("input")
+
+            let terminal = self.sessions[session_id]
+
+            terminal.focus()
+            terminal.scrollToBottom()
+            terminal.write_input(input+"\n")
+        })
+    }
+
+    private setup_interrupt() {
+        let self = this
+
+        $(".interrupt").click(function (event) {
+            let element = event.target
+            let session_id = $(element).data("session-id")
+
+            let terminal = self.sessions[session_id]
+
+            terminal.focus()
+            terminal.scrollToBottom()
+            terminal.write_input(String.fromCharCode(0x03))
         })
     }
 }
