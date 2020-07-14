@@ -2,6 +2,7 @@ import * as $ from "jquery"
 
 import { Terminal } from "xterm"
 import { FitAddon } from "xterm-addon-fit"
+import { WebLinksAddon } from "xterm-addon-web-links"
 
 import { ResizeSensor } from "css-element-queries"
 
@@ -40,6 +41,8 @@ class TerminalSession {
 
         this.fitter = new FitAddon()
         this.terminal.loadAddon(this.fitter)
+
+        this.terminal.loadAddon(new WebLinksAddon())
 
         let self = this
 
