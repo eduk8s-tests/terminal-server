@@ -32,13 +32,11 @@ class TerminalSession {
     private sequence: number
 
     constructor(public readonly id: string) {
-        console.log("{CREATE}", id)
+        console.log("Initializing terminal session", id)
     }
 
     private create_subprocess() {
         let self = this
-
-        console.log("{SUBPROCESS}")
 
         this.terminal = pty.spawn("/bin/bash", ["-il"], {
             name: "xterm-color",
@@ -80,7 +78,7 @@ class TerminalSession {
         })
 
         this.terminal.onExit(function () {
-            console.log("{EXIT}", self.id)
+            console.log("Closing terminal session", self.id)
             self.terminal = null
             self.buffer = []
             self.buffer_size = 0
@@ -127,6 +125,12 @@ class TerminalSession {
         this.sockets.forEach(function (ws) { ws.close() })
     }
 
+    cleanup_connection(ws: WebSocket) {
+        let index = this.sockets.indexOf(ws)
+        if (index != -1)
+            this.sockets.splice(index, 1)
+    }
+
     handle_message(ws: WebSocket, packet: Packet) {
         let self = this
 
@@ -147,8 +151,10 @@ class TerminalSession {
 
                     this.broadcast_message(PacketType.ERROR, {reason: "Hijacked"})
 
-                    if (this.sockets.indexOf(ws) == -1)
+                    if (this.sockets.indexOf(ws) == -1) {
+                        console.log("Attaching terminal session", this.id)
                         this.sockets.push(ws)
+                    }
 
                     // Push out to the new client any residual content in the
                     // sub process output buffer. Note that this will be based
@@ -233,13 +239,13 @@ export class TerminalServer {
                 session.handle_message(ws, packet)
             })
         
-            ws.on("close", function (ws: WebSocket) {
-                console.log("{CLOSE}", ws)
+            ws.on("close", function () {
+                self.cleanup_connection(ws)
             })
         })
     }
 
-    retrieve_session(id: string): TerminalSession {
+    private retrieve_session(id: string): TerminalSession {
         let session: TerminalSession = this.sessions.get(id)
 
         if (!session) {
@@ -248,5 +254,11 @@ export class TerminalServer {
         }
 
         return session
+    }
+
+    private cleanup_connection(ws: WebSocket) {
+        this.sessions.forEach(function (session: TerminalSession) {
+            session.cleanup_connection(ws)
+        })
     }
 }

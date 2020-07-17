@@ -30,11 +30,17 @@ class TerminalSession {
     private socket: WebSocket
     private sequence: number
 
+    private reconnecting: boolean
+    private shutdown: boolean
+
     constructor(id: string, element: HTMLElement, endpoint: string) {
         this.id = id
         this.element = element
         this.endpoint = endpoint
-        this.sequence = 0
+        this.sequence = -1
+
+        this.shutdown = false
+        this.reconnecting = false
 
         this.terminal = new Terminal({
             cursorBlink: true,
@@ -87,6 +93,8 @@ class TerminalSession {
         let self = this
 
         this.socket.onopen = function() {
+            self.reconnecting = false
+
             // We set the data chunk sequence number to 0, to indicate
             // we want all available buffered data.
 
@@ -94,12 +102,20 @@ class TerminalSession {
                 token: self.endpoint,
                 cols: self.terminal.cols,
                 rows: self.terminal.rows,
-                seq: 0
+                seq: self.sequence
             }
 
             self.send_message(PacketType.HELLO, args)
 
-            self.initiate_pings(self)
+            if (self.sequence == -1) {
+                self.terminal.onData(function(data) {
+                    let args = {data: data}
+                    self.send_message(PacketType.DATA, args)
+                })
+
+                self.initiate_pings(self)
+                self.sequence = 0
+            }
         }
 
         this.socket.onmessage = function (evt) {
@@ -107,6 +123,7 @@ class TerminalSession {
             if (packet.id == self.id) {
                 switch (packet.type) {
                     case (PacketType.DATA): {
+                        self.sequence = packet.args.seq
                         self.terminal.write(packet.args.data)
                         break
                     }
@@ -121,14 +138,45 @@ class TerminalSession {
         }
 
         this.socket.onclose = function(_evt: any) {
-            $(self.element).addClass("notify-closed")
-            self.write("\r\nClosed\r\n")
-        }
+            self.socket.close()
 
-        this.terminal.onData(function(data) {
-            let args = {data: data}
-            self.send_message(PacketType.DATA, args)
-        })
+            self.socket = null
+
+            if (self.shutdown)
+                return
+
+            function reconnect() {
+                if (this.shutdown)
+                    return
+
+                let url = window.location.origin
+
+                url = url.replace("https://", "wss://")
+                url = url.replace("http://", "ws://")
+            
+
+                self.socket = new WebSocket(url)
+        
+                self.configure_handlers()
+            }
+
+            self.reconnecting = true
+
+            setTimeout(reconnect, 100)
+
+            function terminate() {
+                if (!self.reconnecting)
+                    return
+
+                self.reconnecting = false
+                self.shutdown = true
+
+                $(self.element).addClass("notify-closed")
+                self.write("\r\nClosed\r\n")
+            }
+
+            setTimeout(terminate, 1000)
+        }
     }
 
     private configure_sensors() {
@@ -308,7 +356,7 @@ class Dashboard {
 
             terminal.focus()
             terminal.scrollToBottom()
-            terminal.paste(input+"\n")
+            terminal.paste(input+"\r")
         })
     }
 
