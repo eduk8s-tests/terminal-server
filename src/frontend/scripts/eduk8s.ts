@@ -92,6 +92,8 @@ class TerminalSession {
     private configure_handlers() {
         let self = this
 
+        $(self.element).removeClass("notify-closed")
+
         this.socket.onopen = function() {
             self.reconnecting = false
 
@@ -145,7 +147,7 @@ class TerminalSession {
             if (self.shutdown)
                 return
 
-            function reconnect() {
+            function connect() {
                 if (this.shutdown)
                     return
 
@@ -154,7 +156,6 @@ class TerminalSession {
                 url = url.replace("https://", "wss://")
                 url = url.replace("http://", "ws://")
             
-
                 self.socket = new WebSocket(url)
         
                 self.configure_handlers()
@@ -162,7 +163,7 @@ class TerminalSession {
 
             self.reconnecting = true
 
-            setTimeout(reconnect, 100)
+            setTimeout(connect, 100)
 
             function terminate() {
                 if (!self.reconnecting)
@@ -245,7 +246,48 @@ class TerminalSession {
     }
 
     close() {
-        this.socket.close()
+        if (this.socket)
+         this.socket.close()
+    }
+
+    reconnect() {
+        if (!this.shutdown)
+            return
+
+        this.shutdown = false
+        this.sequence = 0
+
+        // this.terminal.clear()
+
+        let self = this
+
+        function connect() {
+            if (this.shutdown)
+                return
+
+            let url = window.location.origin
+
+            url = url.replace("https://", "wss://")
+            url = url.replace("http://", "ws://")
+
+            self.socket = new WebSocket(url)
+    
+            self.configure_handlers()
+        }
+
+        self.reconnecting = true
+
+        setTimeout(connect, 100)
+
+        function terminate() {
+            if (!self.reconnecting)
+                return
+
+            self.reconnecting = false
+            self.shutdown = true
+        }
+
+        setTimeout(terminate, 1000)
     }
 }
 
@@ -263,6 +305,7 @@ class Dashboard {
             this.setup_execute()
             this.setup_interrupt()
             this.setup_shutdown()
+            this.setup_reconnect()
         }
     }
 
@@ -385,6 +428,19 @@ class Dashboard {
             let terminal = self.sessions[session_id]
 
             terminal.close()
+        })
+    }
+
+    private setup_reconnect() {
+        let self = this
+
+        $(".reconnect").click(function (event) {
+            let element = event.target
+            let session_id = $(element).data("session-id")
+
+            let terminal = self.sessions[session_id]
+
+            terminal.reconnect()
         })
     }
 }
