@@ -3,7 +3,7 @@ import * as WebSocket from "ws"
 import { v4 as uuidv4 } from "uuid"
 
 import * as pty from "node-pty"
-import {IPty} from "node-pty"
+import { IPty } from "node-pty"
 
 import { Server } from "http"
 import { Terminal } from "xterm"
@@ -43,7 +43,7 @@ class TerminalSession {
             cols: 80,
             rows: 25,
             cwd: process.cwd(),
-            env: <any> process.env
+            env: <any>process.env
         })
 
         this.buffer = []
@@ -51,7 +51,7 @@ class TerminalSession {
         this.sequence = 0
 
         this.terminal.onData(function (data) {
-            let args = {data: data}
+            let args = { data: data }
 
             self.broadcast_message(PacketType.DATA, args)
 
@@ -149,7 +149,7 @@ class TerminalSession {
                     // Send notification to any existing sessions that this
                     // session is being hijacked by new client connection.
 
-                    this.broadcast_message(PacketType.ERROR, {reason: "Hijacked"})
+                    this.broadcast_message(PacketType.ERROR, { reason: "Hijacked" })
 
                     if (this.sockets.indexOf(ws) == -1) {
                         console.log("Attaching terminal session", this.id)
@@ -168,16 +168,16 @@ class TerminalSession {
 
                     let data = this.buffer.filter(function (bucket) {
                         return bucket.seq > packet.args.seq
-                    }).map(function (bucket) {return bucket.data}).join("")
+                    }).map(function (bucket) { return bucket.data }).join("")
 
-                    let seq = this.buffer.length ? this.buffer[this.buffer.length-1].seq : packet.args.seq
+                    let seq = this.buffer.length ? this.buffer[this.buffer.length - 1].seq : packet.args.seq
 
-                    let args = {data: data, seq: seq}
+                    let args = { data: data, seq: seq }
 
                     this.send_message(ws, PacketType.DATA, args)
                 }
                 else {
-                    this.send_message(ws, PacketType.ERROR, {reason: "Forbidden"})
+                    this.send_message(ws, PacketType.ERROR, { reason: "Forbidden" })
                     break
                 }
 
@@ -193,17 +193,17 @@ class TerminalSession {
                         // original size. This will trigger application to
                         // refresh screen at current size.
 
-                        this.terminal.resize(packet.args.cols, packet.args.rows+1)
+                        this.terminal.resize(packet.args.cols, packet.args.rows + 1)
 
                         // Devices will ignore resize request which is followed
                         // immediately by another, so need to wait a short
                         // period of time before sending resize with correct
                         // size again.
 
-                        setTimeout(function() {
+                        setTimeout(function () {
                             if (self.terminal)
                                 self.terminal.resize(packet.args.cols, packet.args.rows)
-                        }, 30); 
+                        }, 30);
                     }
                     else {
                         this.terminal.resize(packet.args.cols, packet.args.rows)
@@ -238,7 +238,7 @@ export class TerminalServer {
 
                 session.handle_message(ws, packet)
             })
-        
+
             ws.on("close", function () {
                 self.cleanup_connection(ws)
             })

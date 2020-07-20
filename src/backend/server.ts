@@ -31,7 +31,7 @@ app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/bootst
 app.use("/static/fonts", express.static(path.join(BASEDIR, "fonts/SourceCodePro"), { maxAge: 3600000 }))
 
 app.get("/", function (req, res) {
-    res.render("testing", {endpoint_id: TerminalServer.id})
+    res.render("testing", { endpoint_id: TerminalServer.id })
 })
 
 app.get("/terminal/session/:session_id", function (req, res) {
@@ -41,5 +41,5 @@ app.get("/terminal/session/:session_id", function (req, res) {
     // will be done when the initial websocket message is sent. The access
     // token will be used to validate access.
 
-    res.render("terminal", {endpoint_id: TerminalServer.id, session_id: session_id})
+    res.render("terminal", { endpoint_id: TerminalServer.id, session_id: session_id })
 })

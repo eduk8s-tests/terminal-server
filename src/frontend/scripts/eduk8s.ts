@@ -60,8 +60,8 @@ class TerminalSession {
                 setTimeout(wait_until_visible, 300)
             else
                 self.configure_session()
-          }
-    
+        }
+
         wait_until_visible()
     }
 
@@ -79,7 +79,7 @@ class TerminalSession {
 
         url = url.replace("https://", "wss://")
         url = url.replace("http://", "ws://")
-        
+
         this.socket = new WebSocket(url)
 
         this.configure_handlers()
@@ -94,7 +94,7 @@ class TerminalSession {
 
         $(self.element).removeClass("notify-closed")
 
-        this.socket.onopen = function() {
+        this.socket.onopen = function () {
             self.reconnecting = false
 
             // We set the data chunk sequence number to 0, to indicate
@@ -110,8 +110,8 @@ class TerminalSession {
             self.send_message(PacketType.HELLO, args)
 
             if (self.sequence == -1) {
-                self.terminal.onData(function(data) {
-                    let args = {data: data}
+                self.terminal.onData(function (data) {
+                    let args = { data: data }
                     self.send_message(PacketType.DATA, args)
                 })
 
@@ -139,7 +139,7 @@ class TerminalSession {
             }
         }
 
-        this.socket.onclose = function(_evt: any) {
+        this.socket.onclose = function (_evt: any) {
             self.socket.close()
 
             self.socket = null
@@ -155,9 +155,9 @@ class TerminalSession {
 
                 url = url.replace("https://", "wss://")
                 url = url.replace("http://", "ws://")
-            
+
                 self.socket = new WebSocket(url)
-        
+
                 self.configure_handlers()
             }
 
@@ -194,7 +194,7 @@ class TerminalSession {
             self.send_message(PacketType.PING)
             setTimeout(ping, 15000)
         }
-        
+
         setTimeout(ping, 15000)
     }
 
@@ -203,12 +203,12 @@ class TerminalSession {
         if (this.element.clientWidth > 0 && this.element.clientHeight > 0) {
             this.fitter.fit()
 
-            let args = {cols: this.terminal.cols, rows: this.terminal.rows}
+            let args = { cols: this.terminal.cols, rows: this.terminal.rows }
             this.send_message(PacketType.RESIZE, args)
         }
     }
 
-    private send_message(type: PacketType, args?: any) : boolean {
+    private send_message(type: PacketType, args?: any): boolean {
         if (!this.socket)
             return false
 
@@ -247,7 +247,7 @@ class TerminalSession {
 
     close() {
         if (this.socket)
-         this.socket.close()
+            this.socket.close()
     }
 
     reconnect() {
@@ -271,7 +271,7 @@ class TerminalSession {
             url = url.replace("http://", "ws://")
 
             self.socket = new WebSocket(url)
-    
+
             self.configure_handlers()
         }
 
@@ -399,7 +399,7 @@ class Dashboard {
 
             terminal.focus()
             terminal.scrollToBottom()
-            terminal.paste(input+"\r")
+            terminal.paste(input + "\r")
         })
     }
 
@@ -451,8 +451,8 @@ function initialize_dashboard() {
 }
 
 $(document).ready(function () {
-    var font = new FontFaceObserver("SourceCodePro", {weight: 400});
-       
+    var font = new FontFaceObserver("SourceCodePro", { weight: 400 });
+
     font.load().then(function () {
         console.log("Loaded fonts okay")
         initialize_dashboard()
