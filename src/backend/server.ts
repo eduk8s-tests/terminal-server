@@ -2,7 +2,7 @@ import * as express from "express"
 import * as path from "path"
 import * as WebSocket from "ws"
 
-import { TerminalServer } from "./terminals"
+import { TerminalServer } from "./modules/terminals"
 
 const BASEDIR = path.dirname(path.dirname(__dirname))
 
