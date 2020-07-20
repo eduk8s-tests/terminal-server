@@ -6,7 +6,7 @@
         "module": "commonjs",
         "moduleResolution": "node",
 	    "sourceMap": true,
-        "outDir": "./built",
+        "outDir": "./build",
         "allowJs": true,
         "target": "es5"
     },

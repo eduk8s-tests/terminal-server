@@ -2,10 +2,10 @@
   "name": "terminal",
   "version": "1.0.0",
   "description": "Terminal for eduk8s.",
-  "main": "built/backend/server.js",
+  "main": "build/backend/server.js",
   "scripts": {
-    "compile": "rm -rf built && tsc && browserify built/frontend/scripts/eduk8s.js --standalone eduk8s -o built/frontend/scripts/eduk8s-bundle.js && cat built/frontend/scripts/eduk8s-bundle.js | uglifyjs > built/frontend/scripts/eduk8s-bundle.min.js",
-    "start": "node built/backend/server.js",
+    "compile": "rm -rf build && tsc && browserify build/frontend/scripts/eduk8s.js --standalone eduk8s -o build/frontend/scripts/eduk8s-bundle.js && cat build/frontend/scripts/eduk8s-bundle.js | uglifyjs > build/frontend/scripts/eduk8s-bundle.min.js",
+    "start": "node build/backend/server.js",
     "install": "npm run compile"
   },
   "author": "Graham Dumpleton",

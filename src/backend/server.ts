@@ -23,7 +23,7 @@ app.set("view engine", "pug")
 
 app.use("/static/images", express.static(path.join(BASEDIR, "src/frontend/images")))
 app.use("/static/styles", express.static(path.join(BASEDIR, "src/frontend/styles")))
-app.use("/static/scripts", express.static(path.join(BASEDIR, "built/frontend/scripts")))
+app.use("/static/scripts", express.static(path.join(BASEDIR, "build/frontend/scripts")))
 
 app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/xterm/css")))
 app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/bootstrap/dist/css")))
