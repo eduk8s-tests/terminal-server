@@ -82,10 +82,12 @@ class TerminalSession {
 
         this.terminal.loadAddon(new WebLinksAddon())
 
+        // Ensure that the element the terminal is contained in is visible.
+        // This is just to ensure that dimensions can be correctly calculated.
+
         let self = this
 
         function wait_until_visible() {
-            console.log("Checking if visible", self.id)
             if (!self.element.offsetParent)
                 setTimeout(wait_until_visible, 300)
             else
@@ -96,8 +98,6 @@ class TerminalSession {
     }
 
     private configure_session() {
-        console.log("Configure terminal session", this.id)
-
         this.terminal.open(this.element)
 
         // We fit the window now. The size details will be sent with the
@@ -115,6 +115,12 @@ class TerminalSession {
         this.configure_handlers()
         this.configure_sensors()
 
+        // If there is more than one terminal session, if this is the first
+        // session ensure it grabs focus. Does mean that if creating extra
+        // sessions in separate window that they will not grab focus. Is
+        // better than a secondary session grabbing focus when have more than
+        // on the page.
+
         if (this.id == "1")
             this.focus()
     }
@@ -128,8 +134,12 @@ class TerminalSession {
         this.socket.onopen = () => {
             this.reconnecting = false
 
-            // We set the data chunk sequence number to 0, to indicate
-            // we want all available buffered data.
+            // The sequence number indicates from where in the buffered data
+            // kept by the server side, data should be returned on an initial
+            // connection. This is to avoid replaying data we already have
+            // previously received. Instead will only get what haven't seen
+            // yet. If this is a completely new session, the sequence number
+            // will start out as -1 so we will be sent everything.
 
             let args: HelloPacketArgs = {
                 token: this.endpoint,
@@ -140,6 +150,12 @@ class TerminalSession {
 
             this.send_message(PacketType.HELLO, args)
 
+            // A sequence number of -1 means this is a completely new session.
+            // In this case we need to setup the callback for receiving input
+            // data from the terminal and initiate the pings. We can only do
+            // this once else we get duplicate registrations if we have to
+            // reconnect because the connection is dropped.
+
             if (this.sequence == -1) {
                 this.terminal.onData((data) => {
                     let args: OutboundDataPacketArgs = { data: data }
@@ -147,27 +163,49 @@ class TerminalSession {
                 })
 
                 this.initiate_pings()
+
+                // Set sequence number to 0 so we don't do this all again.
+
                 this.sequence = 0
             }
         }
 
         this.socket.onmessage = (evt) => {
             let packet: Packet = JSON.parse(evt.data)
+
             if (packet.id == this.id) {
                 switch (packet.type) {
                     case (PacketType.DATA): {
                         let args: InboundDataPacketArgs = packet.args
-                        this.sequence = args.seq
+
                         this.terminal.write(args.data)
+
+                        // Update the sequence number to that received on the
+                        // DATA message from the server side. This affects
+                        // what sequence number of sent on a HELLO message
+                        // if we have to reconnect because the connection is
+                        // dropped. It ensures that on reconnection we only
+                        // get data we haven't seen before.
+
+                        this.sequence = args.seq
+
                         break
                     }
                     case (PacketType.ERROR): {
                         let args: ErrorPacketArgs = packet.args
+
+                        // Right now we only expect to receive reasons of
+                        // 'Forbidden' and 'Hijacked'. This is used to set
+                        // an element class so can provide visual indicator
+                        // to a user. Otherwise nothing is done for an error.
+
                         $(this.element).addClass(`notify-${args.reason.toLowerCase()}`)
+
                         break
                     }
                 }
-            } else {
+            }
+            else {
                 console.warn("Client session " + this.id + " received message for session " + packet.id)
             }
         }
@@ -175,7 +213,22 @@ class TerminalSession {
         this.socket.onclose = (_evt: any) => {
             let self = this
 
-            this.socket.close()
+            // If the socket connection to the backend terminal server is
+            // closed, it doesn't mean that the backend terminal session
+            // has exited. The socket connection could have been lost due to
+            // restart of a router between the frontend client and the
+            // backend. This is in particular a problem when nginx is used
+            // for ingress in a Kubernetes cluster. Every time a new ingress
+            // is created, existing connections will at some point be dropped.
+            // Usually this is about 4 minutes after a new ingress is added.
+            // What we therefore do is attempt to reconnect, but where we
+            // give up after 1 second. This is usually enough to transparently
+            // recover from connections being dropped due to a router restart.
+            // If reconnection fails, it truly means the backend session
+            // had been terminated, or there was still an issue with a router.
+            // In the latter case, a manual reconnection, or page refresh,
+            // would need to be triggered.
+
             this.socket = null
 
             if (this.shutdown)
@@ -216,7 +269,11 @@ class TerminalSession {
     }
 
     private configure_sensors() {
-        console.log("Configure sensor", this.id)
+        // This monitors the element the terminal is embedded in for
+        // changes in size and triggers a recalculation of the terminal
+        // size. In order to avoid problems with multiple resize events
+        // occuring, the callbacks are throttled so at most one is
+        // allowed in the specified time period.
 
         this.sensor = new ResizeSensor(this.element, _.throttle(() => {
             this.resize_terminal()
@@ -225,6 +282,10 @@ class TerminalSession {
 
     private initiate_pings() {
         let self = this
+
+        // Ping messages are only sent from client to backend server. Some
+        // traffic is required when the session is otherwise idle, else you
+        // can't tell if the connection has been dropped.
 
         function ping() {
             self.send_message(PacketType.PING)
@@ -235,7 +296,13 @@ class TerminalSession {
     }
 
     private resize_terminal() {
-        console.log("Resize terminal", this.id)
+        // As long as the dimensions are valid, the terminal is re-fit to
+        // the element size and a RESIZE message is sent to the backend
+        // server. The dimensions on the server side are using to notify
+        // the psudeo tty for the terminal process of the change in window
+        // dimenions allowing any application to adjust to the new size
+        // and refresh the terminal screen.  
+
         if (this.element.clientWidth > 0 && this.element.clientHeight > 0) {
             this.fitter.fit()
 
@@ -253,7 +320,7 @@ class TerminalSession {
             return false
 
         if (this.socket.readyState === WebSocket.OPEN) {
-            let packet = {
+            let packet: Packet = {
                 type: type,
                 id: this.id
             }
@@ -294,10 +361,12 @@ class TerminalSession {
         if (!this.shutdown)
             return
 
+        // Where the socket connection had previously been lost and an
+        // automatic reconnect didn't work, this allows a new attempt to
+        // reconnect to be made.
+
         this.shutdown = false
         this.sequence = 0
-
-        // this.terminal.clear()
 
         let self = this
 
@@ -335,11 +404,14 @@ class Terminals {
     sessions: { [id: string]: TerminalSession } = {}
 
     constructor() {
-        // Search for ".terminal". In this case we insert the actual
-        // terminal directly into the page connected using a web socket.
-        // Since using a class, there can be multiple instances. The id
-        // of the terminal session being connected to is taken from the
-        // "session-id" data attribute.
+        // Search for all elements with class "terminal". For these we insert
+        // a terminal directly into the page connected using a web socket.
+        // Since we are using a class, there can be multiple instances. The
+        // id of the terminal session being connected to is taken from the
+        // "session-id" data attribute. The "endpoint-id" is a unique value
+        // identify the particular terminal server backend. It acts as a
+        // crude method of ensuring that a frontend client is talking to the
+        // correct backend since they must match.
 
         $(".terminal").each((index: number, element: HTMLElement) => {
             let id: string = $(element).data("session-id")
@@ -348,6 +420,9 @@ class Terminals {
             this.sessions[id] = new TerminalSession(id, element, endpoint)
         })
     }
+
+    // The following are the only APIs which separate frontend application
+    // code should use to interact with terminals.
 
     paste_to_terminal(text: string, id: string = "1") {
         let terminal = this.sessions[id]
@@ -435,6 +510,14 @@ function initialize_terminals() {
 }
 
 $(document).ready(() => {
+    // In order to support use of "powerline" tool for fancy shell prompts
+    // we need to use a custom font with modifications for special glyphs
+    // used by powerline. Because fonts usually only load when a browser
+    // first detects the font is required, this usually results in fonts
+    // being wrongly displayed if first time a user is using this. To avoid
+    // that we use a font loader to explicitly load the font first before
+    // start initializing the terminals.
+
     var font = new FontFaceObserver("SourceCodePro", { weight: 400 });
 
     font.load().then(() => {
