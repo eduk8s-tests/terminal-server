@@ -6,8 +6,6 @@ import { TerminalServer } from "./modules/terminals"
 
 const BASEDIR = path.dirname(path.dirname(__dirname))
 
-console.log(`Running with base directory of ${BASEDIR}.`)
-
 const PORT = 8080
 
 const app = express()
@@ -35,15 +33,11 @@ app.get("/", (req, res) => {
 })
 
 app.get("/terminal/testing/", (req, res) => {
-    res.render("testing/dashboard", { endpoint_id: TerminalServer.id })
+    res.render("testing/dashboard", { endpoint_id: terminals.id })
 })
 
 app.get("/terminal/session/:session_id", (req, res) => {
     let session_id = req.params.session_id || "1"
 
-    // We don't activate a server side terminal session at this point, that
-    // will be done when the initial websocket message is sent. The access
-    // token will be used to validate access.
-
-    res.render("terminal", { endpoint_id: TerminalServer.id, session_id: session_id })
+    res.render("terminal", { endpoint_id: terminals.id, session_id: session_id })
 })

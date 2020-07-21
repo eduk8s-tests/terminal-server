@@ -6,6 +6,7 @@ import * as pty from "node-pty"
 import { IPty } from "node-pty"
 
 import { Server } from "http"
+import { assert } from "console"
 
 enum PacketType {
     HELLO,
@@ -74,6 +75,11 @@ class TerminalSession {
         this.sequence = 0
 
         this.terminal.onData((data) => {
+            // A incrementing sequence number is attached to each data
+            // message sent so if a client needs to reconnect, it can
+            // indicate what data it has seen previously so not replaying
+            // data it has already seen.
+
             let args: OutboundDataPacketArgs = {
                 data: data,
                 seq: ++this.sequence
@@ -99,12 +105,17 @@ class TerminalSession {
         })
 
         this.terminal.onExit(() => {
+            // If the terminal process exits, clean things up so that
+            // next time a connection is made to this session, a new
+            // terminal process is created.
+
             console.log("Closing terminal session", this.id)
 
             this.terminal = null
             this.buffer = []
             this.buffer_size = 0
             this.sequence = 0
+
             this.close_connections()
         })
     }
@@ -167,7 +178,7 @@ class TerminalSession {
             case PacketType.HELLO: {
                 let args: HelloPacketArgs = packet.args
 
-                if (args.token == TerminalServer.id) {
+                if (args.token == SessionManager.instance.id) {
                     if (!this.terminal)
                         this.create_subprocess()
 
@@ -178,6 +189,7 @@ class TerminalSession {
 
                     if (this.sockets.indexOf(ws) == -1) {
                         console.log("Attaching terminal session", this.id)
+
                         this.sockets.push(ws)
                     }
 
@@ -206,6 +218,12 @@ class TerminalSession {
                     this.send_message(ws, PacketType.DATA, args)
                 }
                 else {
+                    // Is expecting that the client sends in the HELLO
+                    // message a token which identifies the terminal
+                    // server. If they don't match, the session is rejected.
+
+                    console.log("Rejecting terminal session", this.id)
+
                     let args: ErrorPacketArgs = { reason: "Forbidden" }
 
                     this.send_message(ws, PacketType.ERROR, args)
@@ -243,24 +261,37 @@ class TerminalSession {
                         this.terminal.resize(args.cols, args.rows)
                     }
                 }
-                
+
                 break
             }
         }
     }
 }
 
-export class TerminalServer {
-    static id: string = uuidv4()
+class SessionManager {
+    static instance: SessionManager
 
+    id: string = uuidv4()
+
+    private server: Server
     private socket_server: WebSocket.Server
 
     private sessions = new Map<String, TerminalSession>()
 
-    constructor(server: Server) {
+    private constructor(server: Server) {
+        this.server = server
         this.socket_server = new WebSocket.Server({ server })
 
         this.configure_handlers()
+    }
+
+    static get_instance(server: Server): SessionManager {
+        if (SessionManager.instance)
+            assert(server == SessionManager.instance.server)
+        else
+            SessionManager.instance = new SessionManager(server)
+
+        return SessionManager.instance;
     }
 
     private configure_handlers() {
@@ -293,5 +324,13 @@ export class TerminalServer {
         this.sessions.forEach((session: TerminalSession) => {
             session.cleanup_connection(ws)
         })
+    }
+}
+
+export class TerminalServer {
+    id: string
+
+    constructor(server: Server) {
+        this.id = SessionManager.get_instance(server).id
     }
 }
