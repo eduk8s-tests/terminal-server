@@ -12,12 +12,43 @@ let _ = require("lodash")
 
 let Split = require("split.js")
 
-enum PacketType { HELLO, PING, DATA, RESIZE, ERROR }
+enum PacketType {
+    HELLO,
+    PING,
+    DATA,
+    RESIZE,
+    ERROR
+}
 
 interface Packet {
     type: PacketType
     id: string
     args?: any
+}
+
+interface HelloPacketArgs {
+    token: string,
+    cols: number,
+    rows: number,
+    seq: number
+}
+
+interface InboundDataPacketArgs {
+    data: string,
+    seq: number
+}
+
+interface OutboundDataPacketArgs {
+    data: string
+}
+
+interface ResizePacketArgs {
+    cols: number,
+    rows: number
+}
+
+interface ErrorPacketArgs {
+    reason: string
 }
 
 /** Class representing client side of terminal session. */
@@ -110,7 +141,7 @@ class TerminalSession {
             // We set the data chunk sequence number to 0, to indicate
             // we want all available buffered data.
 
-            let args = {
+            let args: HelloPacketArgs = {
                 token: this.endpoint,
                 cols: this.terminal.cols,
                 rows: this.terminal.rows,
@@ -121,7 +152,7 @@ class TerminalSession {
 
             if (this.sequence == -1) {
                 this.terminal.onData((data) => {
-                    let args = { data: data }
+                    let args: OutboundDataPacketArgs = { data: data }
                     this.send_message(PacketType.DATA, args)
                 })
 
@@ -135,12 +166,14 @@ class TerminalSession {
             if (packet.id == this.id) {
                 switch (packet.type) {
                     case (PacketType.DATA): {
-                        this.sequence = packet.args.seq
-                        this.terminal.write(packet.args.data)
+                        let args: InboundDataPacketArgs = packet.args
+                        this.sequence = args.seq
+                        this.terminal.write(args.data)
                         break
                     }
                     case (PacketType.ERROR): {
-                        $(this.element).addClass(`notify-${packet.args.reason.toLowerCase()}`)
+                        let args: ErrorPacketArgs = packet.args
+                        $(this.element).addClass(`notify-${args.reason.toLowerCase()}`)
                         break
                     }
                 }
@@ -216,7 +249,11 @@ class TerminalSession {
         if (this.element.clientWidth > 0 && this.element.clientHeight > 0) {
             this.fitter.fit()
 
-            let args = { cols: this.terminal.cols, rows: this.terminal.rows }
+            let args: ResizePacketArgs = {
+                cols: this.terminal.cols,
+                rows: this.terminal.rows
+            }
+
             this.send_message(PacketType.RESIZE, args)
         }
     }
