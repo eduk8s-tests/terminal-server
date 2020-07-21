@@ -1,6 +1,6 @@
 import * as $ from "jquery"
 
-var Split = require('split.js')
+let Split = require("split.js")
 
 declare var eduk8s: any
 
@@ -13,20 +13,20 @@ function initialize_dashboard() {
     let dashboard: JQuery = $("#dashboard")
 
     if (dashboard) {
-        Split(['#controls-pane', '#terminals-pane'], {
+        Split(["#controls-pane", "#terminals-pane"], {
             gutterSize: 8,
             sizes: [20, 80],
-            cursor: 'row-resize',
+            cursor: "row-resize",
             snapOffset: 120,
             minSize: 0,
         })
     }
 
     if (terminals) {
-        Split(['#terminal-1', '#terminal-2'], {
+        Split(["#terminal-1", "#terminal-2"], {
             gutterSize: 8,
             sizes: [60, 40],
-            direction: 'vertical'
+            direction: "vertical"
         })
     }
 
