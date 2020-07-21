@@ -6,9 +6,14 @@ import * as pty from "node-pty"
 import { IPty } from "node-pty"
 
 import { Server } from "http"
-import { Terminal } from "xterm"
 
-enum PacketType { HELLO, PING, DATA, RESIZE, ERROR }
+enum PacketType {
+    HELLO,
+    PING,
+    DATA,
+    RESIZE,
+    ERROR
+}
 
 interface Packet {
     type: PacketType
@@ -16,16 +21,36 @@ interface Packet {
     args?: any
 }
 
-interface Bucket {
+interface HelloPacketArgs {
+    token: string
+    cols: number
+    rows: number
     seq: number
+}
+
+interface OutboundDataPacketArgs {
     data: string
+    seq: number
+}
+
+interface InboundDataPacketArgs {
+    data: string
+}
+
+interface ResizePacketArgs {
+    cols: number
+    rows: number
+}
+
+interface ErrorPacketArgs {
+    reason: string
 }
 
 class TerminalSession {
     private sockets: WebSocket[] = []
 
     private terminal: IPty
-    private buffer: Bucket[]
+    private buffer: OutboundDataPacketArgs[]
     private buffer_size: number
     private buffer_limit: number = 50000
 
@@ -49,7 +74,10 @@ class TerminalSession {
         this.sequence = 0
 
         this.terminal.onData((data) => {
-            let args = { data: data }
+            let args: OutboundDataPacketArgs = {
+                data: data,
+                seq: ++this.sequence
+            }
 
             this.broadcast_message(PacketType.DATA, args)
 
@@ -61,12 +89,7 @@ class TerminalSession {
             // Thus buffer in blocks, and discard whole blocks until we
             // are under allowed maximum, or if only one block left.
 
-            let bucket = {
-                seq: ++this.sequence,
-                data: data
-            }
-
-            this.buffer.push(bucket)
+            this.buffer.push(args)
             this.buffer_size += data.length
 
             while (this.buffer.length > 1 && this.buffer_size > this.buffer_limit) {
@@ -133,13 +156,18 @@ class TerminalSession {
     handle_message(ws: WebSocket, packet: Packet) {
         switch (packet.type) {
             case PacketType.DATA: {
-                if (this.terminal)
-                    this.terminal.write(packet.args.data)
+                if (this.terminal) {
+                    let args: InboundDataPacketArgs = packet.args
+
+                    this.terminal.write(args.data)
+                }
 
                 break
             }
             case PacketType.HELLO: {
-                if (packet.args.token == TerminalServer.id) {
+                let args: HelloPacketArgs = packet.args
+
+                if (args.token == TerminalServer.id) {
                     if (!this.terminal)
                         this.create_subprocess()
 
@@ -161,36 +189,45 @@ class TerminalSession {
                     // clients with different screen sizes then the resize
                     // event will break the existing one. We also only send
                     // any buffered data from after the sequence number which
-                    // was supplied with the hello message.
+                    // was supplied with the HELLO message.
 
-                    let data = this.buffer.filter((bucket) => {
+                    let data: string = this.buffer.filter((bucket) => {
                         return bucket.seq > packet.args.seq
                     }).map((bucket) => { return bucket.data }).join("")
 
-                    let seq = this.buffer.length ? this.buffer[this.buffer.length - 1].seq : packet.args.seq
+                    let len: number = this.buffer.length
+                    let seq: number = len ? this.buffer[len - 1].seq : packet.args.seq
 
-                    let args = { data: data, seq: seq }
+                    let args: OutboundDataPacketArgs = {
+                        data: data,
+                        seq: seq
+                    }
 
                     this.send_message(ws, PacketType.DATA, args)
                 }
                 else {
-                    this.send_message(ws, PacketType.ERROR, { reason: "Forbidden" })
+                    let args: ErrorPacketArgs = { reason: "Forbidden" }
+
+                    this.send_message(ws, PacketType.ERROR, args)
+
                     break
                 }
 
                 // This is intended to fall through in order to also trigger
-                // an initial resize when connect based on size in hello
+                // an initial resize when connect based on size in HELLO
                 // message.
             }
             case PacketType.RESIZE: {
                 if (this.terminal) {
-                    if (this.terminal.cols == packet.args.cols && this.terminal.rows == packet.args.rows) {
+                    let args: ResizePacketArgs = packet.args
+
+                    if (this.terminal.cols == args.cols && this.terminal.rows == args.rows) {
                         // The current and new size are the same, so we change
                         // size to be one row larger and then set back to the
                         // original size. This will trigger application to
                         // refresh screen at current size.
 
-                        this.terminal.resize(packet.args.cols, packet.args.rows + 1)
+                        this.terminal.resize(args.cols, args.rows + 1)
 
                         // Devices will ignore resize request which is followed
                         // immediately by another, so need to wait a short
@@ -199,13 +236,14 @@ class TerminalSession {
 
                         setTimeout(() => {
                             if (this.terminal)
-                                this.terminal.resize(packet.args.cols, packet.args.rows)
+                                this.terminal.resize(args.cols, args.rows)
                         }, 30);
                     }
                     else {
-                        this.terminal.resize(packet.args.cols, packet.args.rows)
+                        this.terminal.resize(args.cols, args.rows)
                     }
                 }
+                
                 break
             }
         }

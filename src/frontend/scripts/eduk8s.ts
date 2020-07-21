@@ -27,14 +27,14 @@ interface Packet {
 }
 
 interface HelloPacketArgs {
-    token: string,
-    cols: number,
-    rows: number,
+    token: string
+    cols: number
+    rows: number
     seq: number
 }
 
 interface InboundDataPacketArgs {
-    data: string,
+    data: string
     seq: number
 }
 
@@ -43,7 +43,7 @@ interface OutboundDataPacketArgs {
 }
 
 interface ResizePacketArgs {
-    cols: number,
+    cols: number
     rows: number
 }
 
@@ -51,11 +51,8 @@ interface ErrorPacketArgs {
     reason: string
 }
 
-/** Class representing client side of terminal session. */
 class TerminalSession {
-    /** The session ID for the terminal session. */
     private id: string
-
     private element: HTMLElement
     private endpoint: string
     private terminal: Terminal
@@ -63,16 +60,9 @@ class TerminalSession {
     private sensor: ResizeSensor
     private socket: WebSocket
     private sequence: number
-
     private reconnecting: boolean
     private shutdown: boolean
 
-    /**
-     * Initializes client side endpoint of terminal session.
-     * @param id The session ID for the terminal session.
-     * @param element The HTML element to inject the terminal into.
-     * @param endpoint The server side ID for terminal server.
-     */
     constructor(id: string, element: HTMLElement, endpoint: string) {
         this.id = id
         this.element = element
