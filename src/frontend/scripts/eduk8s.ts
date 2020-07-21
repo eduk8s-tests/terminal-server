@@ -20,8 +20,11 @@ interface Packet {
     args?: any
 }
 
+/** Class representing client side of terminal session. */
 class TerminalSession {
+    /** The session ID for the terminal session. */
     private id: string
+
     private element: HTMLElement
     private endpoint: string
     private terminal: Terminal
@@ -33,6 +36,12 @@ class TerminalSession {
     private reconnecting: boolean
     private shutdown: boolean
 
+    /**
+     * Initializes client side endpoint of terminal session.
+     * @param id The session ID for the terminal session.
+     * @param element The HTML element to inject the terminal into.
+     * @param endpoint The server side ID for terminal server.
+     */
     constructor(id: string, element: HTMLElement, endpoint: string) {
         this.id = id
         this.element = element
@@ -91,6 +100,9 @@ class TerminalSession {
 
     private configure_handlers() {
         let self = this
+
+        if (this.shutdown)
+            return
 
         $(self.element).removeClass("notify-closed")
 
@@ -173,6 +185,7 @@ class TerminalSession {
                 self.shutdown = true
 
                 $(self.element).addClass("notify-closed")
+
                 self.write("\r\nClosed\r\n")
             }
 
@@ -291,87 +304,11 @@ class TerminalSession {
     }
 }
 
-class Dashboard {
-    terminals: JQuery = $("#terminals")
-    dashboard: JQuery = $("#dashboard")
-
+class Terminals {
     sessions: { [id: string]: TerminalSession } = {}
 
     constructor() {
-        this.setup_terminals()
-
-        if (this.dashboard.length) {
-            this.setup_dashboard()
-            this.setup_execute()
-            this.setup_interrupt()
-            this.setup_shutdown()
-            this.setup_reconnect()
-        }
-    }
-
-    private setup_dashboard() {
-        console.log("Setting up dashboard")
-
-        if (this.dashboard) {
-            Split(['#controls-pane', '#terminals-pane'], {
-                gutterSize: 8,
-                sizes: [20, 80],
-                cursor: 'row-resize',
-                snapOffset: 120,
-                minSize: 0,
-            })
-        }
-    }
-
-    private setup_terminals() {
-        // Check for "#terminals" first. If this occurs then we use it as a
-        // container for hosting one or more terminals using iframes for each.
-        // Can only be one such container since the ID must be unique.
-
-        console.log("Setting up terminals")
-
-        if (this.terminals != null) {
-            // The number of terminals is dictated by the "terminal-layout"
-            // data attribute present on the container.
-
-            let layout: string = this.terminals.data("terminal-layout")
-            let token: string = this.terminals.data("endpoint-id")
-
-            if (layout == "split/2") {
-                let grid: JQuery = $("<div>")
-
-                $(this.terminals).append(grid)
-
-                grid.append($("<div>", { id: "terminal-1", class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
-                grid.append($("<div>", { id: "terminal-2", class: "terminal", "data-endpoint-id": token, "data-session-id": "2" }))
-                grid.append($("<div>", { id: "terminal-3", class: "terminal", "data-endpoint-id": token, "data-session-id": "3" }))
-
-                Split(['#terminal-1', '#terminal-2', '#terminal-3'], {
-                    gutterSize: 8,
-                    sizes: [50, 25, 25],
-                    direction: 'vertical'
-                })
-            }
-            else if (layout == "split") {
-                let grid: JQuery = $("<div>")
-
-                $(this.terminals).append(grid)
-
-                grid.append($("<div>", { id: "terminal-1", class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
-                grid.append($("<div>", { id: "terminal-2", class: "terminal", "data-endpoint-id": token, "data-session-id": "2" }))
-
-                Split(['#terminal-1', '#terminal-2'], {
-                    gutterSize: 8,
-                    sizes: [60, 40],
-                    direction: 'vertical'
-                })
-            }
-            else {
-                this.terminals.append($("<div>", { class: "terminal", "data-endpoint-id": token, "data-session-id": "1" }))
-            }
-        }
-
-        // Now look for ".terminal". In this case we insert the actual
+        // Search for ".terminal". In this case we insert the actual
         // terminal directly into the page connected using a web socket.
         // Since using a class, there can be multiple instances. The id
         // of the terminal session being connected to is taken from the
@@ -387,67 +324,89 @@ class Dashboard {
         })
     }
 
-    private setup_execute() {
-        let self = this
+    paste_to_terminal(text: string, id: string = "1") {
+        let terminal = this.sessions[id]
 
-        $(".execute").click(function (event) {
-            let element = event.target
-            let session_id = $(element).data("session-id")
-            let input = $(element).data("input")
-
-            let terminal = self.sessions[session_id]
-
-            terminal.focus()
-            terminal.scrollToBottom()
-            terminal.paste(input + "\r")
-        })
+        if (terminal)
+            terminal.paste(text)
     }
 
-    private setup_interrupt() {
-        let self = this
+    paste_to_all_terminals(text: string) {
+        for (let id in this.sessions)
+            this.sessions[id].paste(text)
+    }
 
-        $(".interrupt").click(function (event) {
-            let element = event.target
-            let session_id = $(element).data("session-id")
+    interrupt_terminal(id: string = "1") {
+        let terminal = this.sessions[id]
 
-            let terminal = self.sessions[session_id]
+        if (terminal) {
+            terminal.focus()
+            terminal.scrollToBottom()
+            terminal.paste(String.fromCharCode(0x03))
+        }
+    }
+
+    interrupt_all_terminals() {
+        for (let id in this.sessions) {
+            let terminal = this.sessions[id]
 
             terminal.focus()
             terminal.scrollToBottom()
             terminal.paste(String.fromCharCode(0x03))
-        })
+        }
     }
 
-    private setup_shutdown() {
-        let self = this
+    execute_in_terminal(command: string, id: string = "1") {
+        if (command == "<ctrl-c>" || command == "<ctrl+c>")
+            return this.interrupt_terminal(id)
 
-        $(".shutdown").click(function (event) {
-            let element = event.target
-            let session_id = $(element).data("session-id")
+        let terminal = this.sessions[id]
 
-            let terminal = self.sessions[session_id]
+        if (terminal) {
+            terminal.focus()
+            terminal.scrollToBottom()
+            terminal.paste(command + "\r")
+        }
+    }
 
+    execute_in_all_terminals(command: string) {
+        for (let id in this.sessions) {
+            let terminal = this.sessions[id]
+
+            terminal.focus()
+            terminal.scrollToBottom()
+            terminal.paste(command + "\r")
+        }
+    }
+
+    disconnect_terminal(id: string = "1") {
+        let terminal = this.sessions[id]
+
+        if (terminal)
             terminal.close()
-        })
     }
 
-    private setup_reconnect() {
-        let self = this
+    disconnect_all_terminals() {
+        for (let id in this.sessions)
+            this.sessions[id].close()
+    }
 
-        $(".reconnect").click(function (event) {
-            let element = event.target
-            let session_id = $(element).data("session-id")
+    reconnect_terminal(id: string = "1") {
+        let terminal = this.sessions[id]
 
-            let terminal = self.sessions[session_id]
-
+        if (terminal)
             terminal.reconnect()
-        })
+    }
+
+    reconnect_all_terminals() {
+        for (let id in this.sessions)
+            this.sessions[id].reconnect()
     }
 }
 
-function initialize_dashboard() {
-    console.log("Initalizing dashboard")
-    exports.dashboard = new Dashboard()
+function initialize_terminals() {
+    console.log("Initalizing terminals")
+    exports.terminals = new Terminals()
 }
 
 $(document).ready(function () {
@@ -455,9 +414,9 @@ $(document).ready(function () {
 
     font.load().then(function () {
         console.log("Loaded fonts okay")
-        initialize_dashboard()
+        initialize_terminals()
     }), function () {
         console.log("Failed to load fonts")
-        initialize_dashboard()
+        initialize_terminals()
     }
 })
