@@ -12,7 +12,7 @@ const PORT = 8080
 
 const app = express()
 
-const server = app.listen(PORT, function () {
+const server = app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}.`)
 })
 
@@ -30,15 +30,15 @@ app.use("/static/styles", express.static(path.join(BASEDIR, "node_modules/bootst
 
 app.use("/static/fonts", express.static(path.join(BASEDIR, "fonts/SourceCodePro"), { maxAge: 3600000 }))
 
-app.get("/", function (req, res) {
+app.get("/", (req, res) => {
     res.redirect("/terminal/session/1")
 })
 
-app.get("/terminal/testing/", function (req, res) {
+app.get("/terminal/testing/", (req, res) => {
     res.render("testing/dashboard", { endpoint_id: TerminalServer.id })
 })
 
-app.get("/terminal/session/:session_id", function (req, res) {
+app.get("/terminal/session/:session_id", (req, res) => {
     let session_id = req.params.session_id || "1"
 
     // We don't activate a server side terminal session at this point, that

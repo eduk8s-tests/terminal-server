@@ -36,8 +36,6 @@ class TerminalSession {
     }
 
     private create_subprocess() {
-        let self = this
-
         this.terminal = pty.spawn("/bin/bash", ["-il"], {
             name: "xterm-color",
             cols: 80,
@@ -50,10 +48,10 @@ class TerminalSession {
         this.buffer_size = 0
         this.sequence = 0
 
-        this.terminal.onData(function (data) {
+        this.terminal.onData((data) => {
             let args = { data: data }
 
-            self.broadcast_message(PacketType.DATA, args)
+            this.broadcast_message(PacketType.DATA, args)
 
             // We need to add the data onto the sub process data buffer
             // used to send data to new client connections. We don't want
@@ -64,26 +62,27 @@ class TerminalSession {
             // are under allowed maximum, or if only one block left.
 
             let bucket = {
-                seq: ++self.sequence,
+                seq: ++this.sequence,
                 data: data
             }
 
-            self.buffer.push(bucket)
-            self.buffer_size += data.length
+            this.buffer.push(bucket)
+            this.buffer_size += data.length
 
-            while (self.buffer.length > 1 && self.buffer_size > self.buffer_limit) {
-                let item = self.buffer.shift()
-                self.buffer_size -= item.data.length
+            while (this.buffer.length > 1 && this.buffer_size > this.buffer_limit) {
+                let item = this.buffer.shift()
+                this.buffer_size -= item.data.length
             }
         })
 
-        this.terminal.onExit(function () {
-            console.log("Closing terminal session", self.id)
-            self.terminal = null
-            self.buffer = []
-            self.buffer_size = 0
-            self.sequence = 0
-            self.close_connections()
+        this.terminal.onExit(() => {
+            console.log("Closing terminal session", this.id)
+
+            this.terminal = null
+            this.buffer = []
+            this.buffer_size = 0
+            this.sequence = 0
+            this.close_connections()
         })
     }
 
@@ -115,14 +114,14 @@ class TerminalSession {
 
         let message = JSON.stringify(packet)
 
-        this.sockets.forEach(function (ws) {
+        this.sockets.forEach((ws) => {
             if (ws.readyState === WebSocket.OPEN)
                 ws.send(message)
         })
     }
 
     private close_connections() {
-        this.sockets.forEach(function (ws) { ws.close() })
+        this.sockets.forEach((ws) => { ws.close() })
     }
 
     cleanup_connection(ws: WebSocket) {
@@ -132,8 +131,6 @@ class TerminalSession {
     }
 
     handle_message(ws: WebSocket, packet: Packet) {
-        let self = this
-
         switch (packet.type) {
             case PacketType.DATA: {
                 if (this.terminal)
@@ -166,9 +163,9 @@ class TerminalSession {
                     // any buffered data from after the sequence number which
                     // was supplied with the hello message.
 
-                    let data = this.buffer.filter(function (bucket) {
+                    let data = this.buffer.filter((bucket) => {
                         return bucket.seq > packet.args.seq
-                    }).map(function (bucket) { return bucket.data }).join("")
+                    }).map((bucket) => { return bucket.data }).join("")
 
                     let seq = this.buffer.length ? this.buffer[this.buffer.length - 1].seq : packet.args.seq
 
@@ -200,9 +197,9 @@ class TerminalSession {
                         // period of time before sending resize with correct
                         // size again.
 
-                        setTimeout(function () {
-                            if (self.terminal)
-                                self.terminal.resize(packet.args.cols, packet.args.rows)
+                        setTimeout(() => {
+                            if (this.terminal)
+                                this.terminal.resize(packet.args.cols, packet.args.rows)
                         }, 30);
                     }
                     else {
@@ -229,18 +226,16 @@ export class TerminalServer {
     }
 
     private configure_handlers() {
-        let self = this
-
-        this.socket_server.on("connection", function (ws: WebSocket) {
-            ws.on("message", function (message: string) {
+        this.socket_server.on("connection", (ws: WebSocket) => {
+            ws.on("message", (message: string) => {
                 let packet: Packet = JSON.parse(message)
-                let session: TerminalSession = self.retrieve_session(packet.id)
+                let session: TerminalSession = this.retrieve_session(packet.id)
 
                 session.handle_message(ws, packet)
             })
 
-            ws.on("close", function () {
-                self.cleanup_connection(ws)
+            ws.on("close", () => {
+                this.cleanup_connection(ws)
             })
         })
     }
@@ -257,7 +252,7 @@ export class TerminalServer {
     }
 
     private cleanup_connection(ws: WebSocket) {
-        this.sessions.forEach(function (session: TerminalSession) {
+        this.sessions.forEach((session: TerminalSession) => {
             session.cleanup_connection(ws)
         })
     }
