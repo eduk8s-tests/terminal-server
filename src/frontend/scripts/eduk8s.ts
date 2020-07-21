@@ -99,64 +99,63 @@ class TerminalSession {
     }
 
     private configure_handlers() {
-        let self = this
-
         if (this.shutdown)
             return
 
-        $(self.element).removeClass("notify-closed")
+        $(this.element).removeClass("notify-closed")
 
-        this.socket.onopen = function () {
-            self.reconnecting = false
+        this.socket.onopen = () => {
+            this.reconnecting = false
 
             // We set the data chunk sequence number to 0, to indicate
             // we want all available buffered data.
 
             let args = {
-                token: self.endpoint,
-                cols: self.terminal.cols,
-                rows: self.terminal.rows,
-                seq: self.sequence
+                token: this.endpoint,
+                cols: this.terminal.cols,
+                rows: this.terminal.rows,
+                seq: this.sequence
             }
 
-            self.send_message(PacketType.HELLO, args)
+            this.send_message(PacketType.HELLO, args)
 
-            if (self.sequence == -1) {
-                self.terminal.onData(function (data) {
+            if (this.sequence == -1) {
+                this.terminal.onData((data) => {
                     let args = { data: data }
-                    self.send_message(PacketType.DATA, args)
+                    this.send_message(PacketType.DATA, args)
                 })
 
-                self.initiate_pings(self)
-                self.sequence = 0
+                this.initiate_pings()
+                this.sequence = 0
             }
         }
 
-        this.socket.onmessage = function (evt) {
+        this.socket.onmessage = (evt) => {
             let packet: Packet = JSON.parse(evt.data)
-            if (packet.id == self.id) {
+            if (packet.id == this.id) {
                 switch (packet.type) {
                     case (PacketType.DATA): {
-                        self.sequence = packet.args.seq
-                        self.terminal.write(packet.args.data)
+                        this.sequence = packet.args.seq
+                        this.terminal.write(packet.args.data)
                         break
                     }
                     case (PacketType.ERROR): {
-                        $(self.element).addClass(`notify-${packet.args.reason.toLowerCase()}`)
+                        $(this.element).addClass(`notify-${packet.args.reason.toLowerCase()}`)
                         break
                     }
                 }
             } else {
-                console.warn("Client session " + self.id + " received message for session " + packet.id)
+                console.warn("Client session " + this.id + " received message for session " + packet.id)
             }
         }
 
-        this.socket.onclose = function (_evt: any) {
-            self.socket.close()
+        this.socket.onclose = (_evt: any) => {
+            let self = this
 
-            self.socket = null
+            this.socket.close()
+            this.socket = null
 
-            if (self.shutdown)
+            if (this.shutdown)
                 return
 
             function connect() {
@@ -173,7 +172,7 @@ class TerminalSession {
                 self.configure_handlers()
             }
 
-            self.reconnecting = true
+            this.reconnecting = true
 
             setTimeout(connect, 100)
 
@@ -196,13 +195,14 @@ class TerminalSession {
     private configure_sensors() {
         console.log("Configure sensor", this.id)
 
-        let self = this
-        this.sensor = new ResizeSensor(this.element, _.throttle(function () {
-            self.resize_terminal()
+        this.sensor = new ResizeSensor(this.element, _.throttle(() => {
+            this.resize_terminal()
         }, 500))
     }
 
-    private initiate_pings(self: TerminalSession) {
+    private initiate_pings() {
+        let self = this
+
         function ping() {
             self.send_message(PacketType.PING)
             setTimeout(ping, 15000)
@@ -288,7 +288,7 @@ class TerminalSession {
             self.configure_handlers()
         }
 
-        self.reconnecting = true
+        this.reconnecting = true
 
         setTimeout(connect, 100)
 
@@ -314,13 +314,11 @@ class Terminals {
         // of the terminal session being connected to is taken from the
         // "session-id" data attribute.
 
-        let self = this
-
-        $(".terminal").each(function (index: number, element: HTMLElement) {
+        $(".terminal").each((index: number, element: HTMLElement) => {
             let id: string = $(element).data("session-id")
             let endpoint: string = $(element).data("endpoint-id")
 
-            self.sessions[id] = new TerminalSession(id, element, endpoint)
+            this.sessions[id] = new TerminalSession(id, element, endpoint)
         })
     }
 
@@ -409,13 +407,13 @@ function initialize_terminals() {
     exports.terminals = new Terminals()
 }
 
-$(document).ready(function () {
+$(document).ready(() => {
     var font = new FontFaceObserver("SourceCodePro", { weight: 400 });
 
-    font.load().then(function () {
+    font.load().then(() => {
         console.log("Loaded fonts okay")
         initialize_terminals()
-    }), function () {
+    }), () => {
         console.log("Failed to load fonts")
         initialize_terminals()
     }

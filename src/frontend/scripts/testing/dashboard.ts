@@ -1,14 +1,8 @@
 import * as $ from "jquery"
-
 let Split = require("split.js")
-
 declare var eduk8s: any
 
-function initialize_dashboard() {
-    console.log("Initalizing dashboard")
-
-    let self = this
-
+$(document).ready(() => {
     let terminals: JQuery = $("#terminals")
     let dashboard: JQuery = $("#dashboard")
 
@@ -30,29 +24,19 @@ function initialize_dashboard() {
         })
     }
 
-    $(".execute").click(function (event) {
-        let element = event.target
-        let session_id = $(element).data("session-id")
-        let input = $(element).data("input")
-
+    $(".execute").click((event) => {
+        let session_id = $(event.target).data("session-id")
+        let input = $(event.target).data("input")
         eduk8s.terminals.execute_in_terminal(input, session_id)
     })
 
-    $(".disconnect").click(function (event) {
-        let element = event.target
-        let session_id = $(element).data("session-id")
-
+    $(".disconnect").click((event) => {
+        let session_id = $(event.target).data("session-id")
         eduk8s.terminals.disconnect_terminal(session_id)
     })
 
-    $(".reconnect").click(function (event) {
-        let element = event.target
-        let session_id = $(element).data("session-id")
-
+    $(".reconnect").click((event) => {
+        let session_id = $(event.target).data("session-id")
         eduk8s.terminals.reconnect_terminal(session_id)
     })
-}
-
-$(document).ready(function () {
-    initialize_dashboard()
 })
