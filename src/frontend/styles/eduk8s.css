@@ -85,11 +85,11 @@ body {
 	float: left;
 }
 
-div.notify-closed, div.notify-forbidden, div.notify-hijacked {
+div.notify-closed, div.notify-exited, div.notify-forbidden, div.notify-hijacked {
 	filter: grayscale(1);
 }
 
-div.notify-closed:after, div.notify-forbidden:after, div.notify-hijacked:after {
+div.notify-closed:after, div.notify-exited:after, div.notify-forbidden:after, div.notify-hijacked:after {
 	font-size: 10em;
 	display: flex;
 	justify-content: center;
@@ -106,6 +106,10 @@ div.notify-closed:after, div.notify-forbidden:after, div.notify-hijacked:after {
 
 div.notify-closed:after {
 	content: "CLOSED"
+}
+
+div.notify-exited:after {
+	content: "EXITED"
 }
 
 div.notify-forbidden:after {

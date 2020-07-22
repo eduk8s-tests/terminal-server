@@ -17,6 +17,7 @@ enum PacketType {
     PING,
     DATA,
     RESIZE,
+    EXIT,
     ERROR
 }
 
@@ -130,6 +131,7 @@ class TerminalSession {
             return
 
         $(this.element).removeClass("notify-closed")
+        $(this.element).removeClass("notify-exited")
 
         this.socket.onopen = () => {
             this.reconnecting = false
@@ -189,6 +191,20 @@ class TerminalSession {
 
                         this.sequence = args.seq
 
+                        break
+                    }
+                    case (PacketType.EXIT): {
+                        console.log('EXIT')
+
+                        $(this.element).addClass("notify-exited")
+
+                        this.write("\r\nExited\r\n")
+
+                        this.socket.close()
+
+                        this.shutdown = true
+                        this.socket = null
+                        
                         break
                     }
                     case (PacketType.ERROR): {

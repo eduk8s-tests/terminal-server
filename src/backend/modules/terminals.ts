@@ -13,6 +13,7 @@ enum PacketType {
     PING,
     DATA,
     RESIZE,
+    EXIT,
     ERROR
 }
 
@@ -109,14 +110,16 @@ class TerminalSession {
             // next time a connection is made to this session, a new
             // terminal process is created.
 
-            console.log("Closing terminal session", this.id)
+            console.log("Terminal session exited", this.id)
+
+            this.broadcast_message(PacketType.EXIT)
+
+            this.close_connections()
 
             this.terminal = null
             this.buffer = []
             this.buffer_size = 0
             this.sequence = 0
-
-            this.close_connections()
         })
     }
 
@@ -288,7 +291,7 @@ class SessionManager {
     static get_instance(server?: Server): SessionManager {
         if (!server)
             return SessionManager.instance
-            
+
         if (SessionManager.instance)
             assert(server == SessionManager.instance.server)
         else
