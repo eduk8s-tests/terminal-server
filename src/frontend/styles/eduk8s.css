@@ -99,8 +99,8 @@ div.notify-closed:after, div.notify-forbidden:after, div.notify-hijacked:after {
 	left: 0;
 	width: 100%;
 	height: 100%;
-	transform: rotate(-30deg);
-	opacity: .2;
+	transform: rotate(-45deg);
+	opacity: .4;
 	font-weight: 900;
 }
 
