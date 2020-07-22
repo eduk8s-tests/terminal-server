@@ -11,7 +11,7 @@ const PORT = 8080
 const app = express()
 
 const server = app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}.`)
+    console.log(`HTTP server running on http://localhost:${PORT}.`)
 })
 
 let terminals = new TerminalServer(server)
@@ -41,3 +41,15 @@ app.get("/terminal/session/:session_id", (req, res) => {
 
     res.render("terminal", { endpoint_id: terminals.id, session_id: session_id })
 })
+
+function handle_shutdown() {
+    console.info('Starting shutdown.')
+    console.log('Closing HTTP server.')
+    server.close(() => {
+        console.log('HTTP server closed.')
+        process.exit(0)
+    })
+}
+
+process.on('SIGTERM', handle_shutdown)
+process.on('SIGINT', handle_shutdown)
