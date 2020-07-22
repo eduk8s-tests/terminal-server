@@ -458,7 +458,6 @@ class Terminals {
         let terminal = this.sessions[id]
 
         if (terminal) {
-            terminal.focus()
             terminal.scrollToBottom()
             terminal.paste(String.fromCharCode(0x03))
         }
@@ -467,8 +466,6 @@ class Terminals {
     interrupt_all_terminals() {
         for (let id in this.sessions) {
             let terminal = this.sessions[id]
-
-            terminal.focus()
             terminal.scrollToBottom()
             terminal.paste(String.fromCharCode(0x03))
         }
@@ -481,7 +478,6 @@ class Terminals {
         let terminal = this.sessions[id]
 
         if (terminal) {
-            terminal.focus()
             terminal.scrollToBottom()
             terminal.paste(command + "\r")
         }
@@ -491,7 +487,6 @@ class Terminals {
         for (let id in this.sessions) {
             let terminal = this.sessions[id]
 
-            terminal.focus()
             terminal.scrollToBottom()
             terminal.paste(command + "\r")
         }
