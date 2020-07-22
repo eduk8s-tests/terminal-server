@@ -43,8 +43,11 @@ app.get("/terminal/session/:session_id", (req, res) => {
 })
 
 function handle_shutdown() {
-    console.info('Starting shutdown.')
+    console.log('Starting shutdown.')
     console.log('Closing HTTP server.')
+
+    terminals.close_all_sessions()
+    
     server.close(() => {
         console.log('HTTP server closed.')
         process.exit(0)

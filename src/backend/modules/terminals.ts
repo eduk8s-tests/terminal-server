@@ -154,7 +154,7 @@ class TerminalSession {
         })
     }
 
-    private close_connections() {
+    close_connections() {
         this.sockets.forEach((ws) => { ws.close() })
     }
 
@@ -285,7 +285,10 @@ class SessionManager {
         this.configure_handlers()
     }
 
-    static get_instance(server: Server): SessionManager {
+    static get_instance(server?: Server): SessionManager {
+        if (!server)
+            return SessionManager.instance
+            
         if (SessionManager.instance)
             assert(server == SessionManager.instance.server)
         else
@@ -325,6 +328,12 @@ class SessionManager {
             session.cleanup_connection(ws)
         })
     }
+
+    close_all_sessions() {
+        this.sessions.forEach((session: TerminalSession) => {
+            session.close_connections()
+        })
+    }
 }
 
 export class TerminalServer {
@@ -332,5 +341,9 @@ export class TerminalServer {
 
     constructor(server: Server) {
         this.id = SessionManager.get_instance(server).id
+    }
+
+    close_all_sessions() {
+        SessionManager.get_instance().close_all_sessions()
     }
 }
