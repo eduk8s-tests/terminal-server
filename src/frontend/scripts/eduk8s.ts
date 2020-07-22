@@ -515,16 +515,25 @@ $(document).ready(() => {
     // used by powerline. Because fonts usually only load when a browser
     // first detects the font is required, this usually results in fonts
     // being wrongly displayed if first time a user is using this. To avoid
-    // that we use a font loader to explicitly load the font first before
+    // that we use a font loader to explicitly load the fonts first before
     // start initializing the terminals.
 
-    var font = new FontFaceObserver("SourceCodePro", { weight: 400 });
+    let font_400 = new FontFaceObserver("SourceCodePro", { weight: 400 });
+    let font_700 = new FontFaceObserver("SourceCodePro", { weight: 700 });
 
-    font.load().then(() => {
-        console.log("Loaded fonts okay")
-        initialize_terminals()
+    let font_400_loader = font_400.load()
+    let font_700_loader = font_700.load()
+
+    font_400_loader.then(() => {
+        font_700_loader.then(() => {
+            console.log("Loaded fonts okay.")
+            initialize_terminals()
+        }), () => {
+            console.log("Failed to load fonts.")
+            initialize_terminals()
+        }
     }), () => {
-        console.log("Failed to load fonts")
-        initialize_terminals()
+        console.log("Failed to load fonts.")
+        initialize_terminals()  
     }
 })
