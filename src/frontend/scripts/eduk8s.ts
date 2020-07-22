@@ -198,6 +198,7 @@ class TerminalSession {
 
                         $(this.element).addClass("notify-exited")
 
+                        this.scrollToBottom()
                         this.write("\r\nExited\r\n")
 
                         this.socket.close()
@@ -277,6 +278,7 @@ class TerminalSession {
 
                 $(self.element).addClass("notify-closed")
 
+                self.scrollToBottom()
                 self.write("\r\nClosed\r\n")
             }
 
